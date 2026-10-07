@@ -97,7 +97,10 @@ if [ -n "$GAME_ZIP_URL" ]; then
   if [ -f "$GAME_ZIP_URL" ]; then
     GAME="$GAME_ZIP_URL"
   else
-    GAME_DOWNLOAD_ZIP="$(mktemp -t game.XXXXXX.zip)"
+    # mktemp -t would name the file <template>.<random>, not ending in .zip
+    # (the extension check below requires *.zip). Use a temp dir + fixed name.
+    GAME_DOWNLOAD_DIR="$(mktemp -d -t game.XXXXXX)"
+    GAME_DOWNLOAD_ZIP="$GAME_DOWNLOAD_DIR/Halo.zip"
     info "Downloading game zip: $GAME_ZIP_URL"
     curl -L --fail -o "$GAME_DOWNLOAD_ZIP" "$GAME_ZIP_URL"
     GAME="$GAME_DOWNLOAD_ZIP"

@@ -170,7 +170,11 @@ fi
 section "Game source"
 GAME_URL="${GAME_URL:-$GAME_URL_POS}"
 if [ -n "$GAME_URL" ]; then
-  GAME_ZIP="$(mktemp -t halox-game.XXXXXX.zip)"
+  # mktemp -t appends the random suffix AFTER the literal template, so the
+  # archive name never ends in .zip and build-wrapper.sh would reject it.
+  # Download into a temp dir under a fixed name that ends in .zip.
+  GAME_ZIP_DIR="$(mktemp -d -t halox-game.XXXXXX)"
+  GAME_ZIP="$GAME_ZIP_DIR/halo.zip"
   info "Downloading game zip: $GAME_URL"
   curl -L --fail -o "$GAME_ZIP" "$GAME_URL"
   GAME="$GAME_ZIP"
