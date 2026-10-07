@@ -39,6 +39,12 @@
 #
 set -euo pipefail
 
+# Repo root / script dir for locating assets and the shared helpers
+SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+
+# Shared pretty-printing helpers (colors only on a TTY)
+. "$SCRIPT_DIR/common-output.sh"
+
 ENGINE=""
 GAME=""
 GAME_ZIP_URL=""
@@ -73,12 +79,26 @@ if [ -z "$GAME" ] && [ -z "$GAME_ZIP_URL" ]; then echo "Missing --game or --game
 
 [ -d "$ENGINE/bin" ] || { echo "Engine dir must contain bin/ (got: $ENGINE)"; exit 1; }
 
+# --- Show configuration ---------------------------------------------------
+banner "HaloX - wrapper builder" \
+  "Assembles a runnable HaloX.app from a Wine engine + game files"
+section "Configuration"
+kv "Engine"           "$ENGINE"
+if [ -n "$GAME_ZIP_URL" ]; then kv "Game (URL)" "$GAME_ZIP_URL"; else kv "Game" "$GAME"; fi
+kv "Arch"             "$ARCH"
+kv "Output"           "$OUT"
+kv "Chimera"          "${CHIMERA:-off}"
+kv "DSOAL"            "${DSOAL:-off}"
+if [ -n "$DSOAL_HRTF" ]; then kv "DSOAL HRTF" "on"; else kv "DSOAL HRTF" "off"; fi
+kv "MoltenVK"         "$MOLTENVK"
+kv "Wineskin runtime" "${WINESKIN_RUNTIME:-off}"
+
 if [ -n "$GAME_ZIP_URL" ]; then
   if [ -f "$GAME_ZIP_URL" ]; then
     GAME="$GAME_ZIP_URL"
   else
     GAME_DOWNLOAD_ZIP="$(mktemp -t game.XXXXXX.zip)"
-    echo "Downloading Game zip..."
+    info "Downloading game zip: $GAME_ZIP_URL"
     curl -L --fail -o "$GAME_DOWNLOAD_ZIP" "$GAME_ZIP_URL"
     GAME="$GAME_DOWNLOAD_ZIP"
   fi
@@ -99,9 +119,11 @@ fi
 
 [ -d "$GAME_SRC" ] || { echo "Game dir not found: $GAME_SRC"; exit 1; }
 [ -f "$GAME_SRC/halo.exe" ] || { echo "Game dir must contain halo.exe (got: $GAME_SRC)"; exit 1; }
+ok "Game source ready: $GAME_SRC (halo.exe present)"
 
 # Overlay Chimera if provided
 if [ -n "$CHIMERA" ]; then
+  section "Chimera"
   if [ "$CHIMERA" = "github" ]; then
     CHIMERA_ZIP="$(mktemp -t chimera.XXXXXX.archive)"
     CHIMERA_URL="$(python3 - <<'PY'
@@ -122,6 +144,7 @@ for a in d.get("assets", []):
 PY
 )"
     [ -n "$CHIMERA_URL" ] || { echo "Could not find Chimera zip release"; exit 1; }
+    info "Chimera: downloading $CHIMERA_URL"
     curl -L -o "$CHIMERA_ZIP" "$CHIMERA_URL"
     CHIMERA_EXTRACT_DIR="$(mktemp -d)"
     bsdtar -xf "$CHIMERA_ZIP" -C "$CHIMERA_EXTRACT_DIR"
@@ -145,11 +168,13 @@ PY
   fi
   [ -d "$CHIMERA_SRC" ] || { echo "Chimera dir not found: $CHIMERA_SRC"; exit 1; }
   cp -R "$CHIMERA_SRC/." "$GAME_SRC/"
+  ok "Applied Chimera from $CHIMERA_SRC"
 fi
 
 # Overlay DSOAL (DirectSound3D via OpenAL Soft) if requested. Halo is a 32-bit
 # executable, so only the Win32 binaries matter.
 if [ -n "$DSOAL" ]; then
+  section "DSOAL"
   DSOAL_EXTRACT_DIR=""
   if [ "$DSOAL" = "bundle" ]; then
     # Checked-in, tested build (vendor/dsoal-d9fed51a). This is the only DSOAL
@@ -158,7 +183,7 @@ if [ -n "$DSOAL" ]; then
     DSOAL_DIR="$(cd "$(dirname "$0")" && pwd)/../vendor/dsoal-d9fed51a"
   elif [ "$DSOAL" = "github" ]; then
     DSOAL_ARCHIVE="$(mktemp -t dsoal.XXXXXX.zip)"
-    echo "Downloading DSOAL (github latest-master) ..."
+    info "Downloading DSOAL (github latest-master) ..."
     curl -L --fail -o "$DSOAL_ARCHIVE" \
       "https://github.com/kcat/dsoal/releases/download/latest-master/DSOAL.zip"
     DSOAL_EXTRACT_DIR="$(mktemp -d)"
@@ -198,15 +223,14 @@ if [ -n "$DSOAL" ]; then
     fi
     echo ">> DSOAL HRTF (headphones) enabled"
   fi
-  echo ">> Applied DSOAL from $DSOAL_DIR"
+  ok "Applied DSOAL from $DSOAL_DIR"
 fi
 
-echo ">> Assembling $OUT"
+section "Assemble wrapper"
 rm -rf "$OUT"
 mkdir -p "$OUT/Contents/MacOS" "$OUT/Contents/Resources/wine"
 
 # 1) Launcher + Info.plist
-SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 cp "$SCRIPT_DIR/../wrapper/HaloX-Launcher.sh" "$OUT/Contents/MacOS/HaloX"
 chmod +x "$OUT/Contents/MacOS/HaloX"
 
@@ -261,7 +285,7 @@ if [ "$MOLTENVK" != "none" ] && [ -f "$MVK_DEST" ]; then
   MVK_SRC="$MOLTENVK"
   if [ ! -f "$MVK_SRC" ]; then
     MVK_TAR="$(mktemp -t moltenvk.XXXXXX.tar)"
-    echo ">> Downloading MoltenVK $MOLTENVK..."
+    info "Downloading MoltenVK $MOLTENVK..."
     curl -L --fail -o "$MVK_TAR" \
       "https://github.com/KhronosGroup/MoltenVK/releases/download/v$MOLTENVK/MoltenVK-macos.tar"
     MVK_DIR="$(mktemp -d)"
@@ -270,12 +294,13 @@ if [ "$MOLTENVK" != "none" ] && [ -f "$MVK_DEST" ]; then
   fi
   [ -f "$MVK_SRC" ] || { echo "MoltenVK dylib not found: $MVK_SRC"; exit 1; }
   cp "$MVK_SRC" "$MVK_DEST"
-  echo ">> Bundled MoltenVK $MOLTENVK"
+  ok "Bundled MoltenVK $MOLTENVK"
 fi
 
 # 2c) App icon
 if [ -f "$SCRIPT_DIR/../assets/AppIcon.icns" ]; then
   cp "$SCRIPT_DIR/../assets/AppIcon.icns" "$OUT/Contents/Resources/AppIcon.icns"
+  ok "Bundled app icon (AppIcon.icns)"
 fi
 
 # 3) Game files
@@ -288,4 +313,5 @@ chmod -R u+rwX "$OUT"
 # 4) Ad-hoc signature so Gatekeeper on Sonoma is less picky
 codesign --force --deep --sign - "$OUT" 2>/dev/null || echo "!! codesign failed (ok for local test)"
 
-echo ">> Done: $OUT"
+section "Done"
+ok "Built: $OUT"

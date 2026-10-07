@@ -56,6 +56,9 @@ engine + runtime (~1–2 GB total); later runs work fully offline.
 ./scripts/build-local.sh --engine-url https://github.com/vitor251093/porting-kit-engines/releases/download/wineskin/WS11WineCX64Bit23.7.1.tar.7z
 ```
 
+What a local run looks like in the terminal (incl. the first-run engine/runtime
+download) — [example build output](#appendix-example-build-output).
+
 ### Directly
 
 ```bash
@@ -185,3 +188,11 @@ HALOX_D3D_RENDERER=gl /Applications/HaloX.app/Contents/MacOS/HaloX
 ## License
 
 Most source code is MIT unless noted otherwise. Artwork and audio are not under a license.
+
+## Appendix: Example build output
+
+Terminal output of a local build (`./scripts/build-local.sh --game …`) including
+the first-run download of the WineskinCX engine and the Wineskin runtime, as seen
+in macOS Terminal:
+
+<img src="assets/terminal-output.webp" alt="Terminal output of a local HaloX build">
