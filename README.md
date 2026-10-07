@@ -28,10 +28,19 @@ double-clickable `.app`.
 
 ### Locally (recommended)
 
-`scripts/build-local.sh` drives `build-wrapper.sh` with exactly the same defaults
-as the CI workflow: WineskinCX 23.7.1 engine (downloaded on first use and cached
-in `~/Library/Caches/HaloX`), the Wineskin wrapper runtime, Chimera **on**,
-DSOAL `bundle`, MoltenVK 1.2.5.
+**1. Get the repo** (the game files are not in it — you provide your own copy
+of the installed Halo CE folder, see [Game data requirements](#game-data-requirements)):
+
+```bash
+git clone git@github.com:BUM-MasterMike/HaloX.git
+cd HaloX
+```
+
+**2. Build.** `scripts/build-local.sh` drives `build-wrapper.sh` with exactly
+the same defaults as the CI workflow: WineskinCX 23.7.1 engine (downloaded on
+first use and cached in `~/Library/Caches/HaloX`), the Wineskin wrapper runtime,
+Chimera **on**, DSOAL `bundle`, MoltenVK 1.2.5. The first run downloads the
+engine + runtime (~1–2 GB total); later runs work fully offline.
 
 ```bash
 # ./game already contains halo.exe
