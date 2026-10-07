@@ -313,6 +313,14 @@ cp -R "$GAME_SRC" "$OUT/Contents/Resources/game"
 #     its quarantine flag can be cleared without sudo after download.
 chmod -R u+rwX "$OUT"
 
+# 3b) Add LC_RPATH entries pointing at Contents/Frameworks to the engine
+#     binaries. Intel's dyld falls back to DYLD_FALLBACK_LIBRARY_PATH for
+#     @rpath, but Rosetta's dyld does not (x86_64 wine on Apple Silicon fails
+#     with "no LC_RPATH's found"); a real rpath fixes both. --no-sign: the
+#     codesign step right below signs the whole bundle once; --quiet: keep
+#     builds concise (per-file lines are for manual debugging).
+"$SCRIPT_DIR/patch-engine-rpath.sh" "$OUT" --no-sign --quiet
+
 # 4) Ad-hoc signature so Gatekeeper on Sonoma is less picky
 codesign --force --deep --sign - "$OUT" 2>/dev/null || echo "!! codesign failed (ok for local test)"
 
