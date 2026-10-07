@@ -52,7 +52,17 @@ section() {
 }
 
 kv() {
-  printf '  %-18s %s\n' "${C_DIM}${1}${C_RESET}" "${2}"
+  # %-Ns counts ANSI escape bytes, which shifts the values once colors are
+  # on. Pad against the visible label length instead so values land on the
+  # same column with and without colors (CI stays plain, TTY aligns).
+  local label="$1"
+  local value="${2:-}"
+  local len=${#label}
+  if [ "$len" -ge 18 ]; then
+    printf '  %s %s\n' "${C_DIM}${label}${C_RESET}" "${value}"
+  else
+    printf '  %s%*s %s\n' "${C_DIM}${label}${C_RESET}" "$((18 - len))" "" "${value}"
+  fi
 }
 
 info() {
