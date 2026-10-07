@@ -1,0 +1,7 @@
+.DS_Store
+*.orig
+
+# Private game assets / build outputs—never commit
+game/
+HaloX.app/
+*.zip

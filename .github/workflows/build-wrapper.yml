@@ -1,0 +1,227 @@
+name: Build HaloX Wrapper
+
+# Manual trigger only. Version is fixed via env.VERSION below.
+on:
+  workflow_dispatch:
+    inputs:
+      publish:
+        description: "Create a GitHub Release with the built artifacts (set to false for a pure test build)"
+        required: false
+        default: "false"
+      game_zip_url:
+        description: "Optional URL to a zip of the installed Halo folder; used instead of ./game"
+        required: false
+        default: ""
+      with_chimera:
+        description: "Whether to include Chimera in the build"
+        required: false
+        default: "true"
+      with_dsoal:
+        description: "Whether to include DSOAL (3D audio) in the build"
+        required: false
+        default: "true"
+      dsoal:
+        description: "DSOAL source: bundle (checked-in tested build, default), github (latest daily build), or URL/path to a DSOAL archive"
+        required: false
+        default: "bundle"
+      dsoal_hrtf:
+        description: "Force DSOAL binaural HRTF output (headphones)"
+        required: false
+        default: "false"
+      moltenvk:
+        description: "MoltenVK version bundled for the optional vulkan per-run override (default 1.2.5; use 'none' to keep the engine's)"
+        required: false
+        default: "1.2.5"
+      engine:
+        description: "Wine engine to use. WineskinCX 23.7.1 (WS11) is the verified engine for Halo (Gcenx Wine 11 does not work); other WS11 WineskinCX versions can be tested."
+        required: false
+        default: "wineskincx-23.7.1"
+        type: choice
+        options:
+          - wineskincx-23.7.1
+          - wineskincx-23.6.0
+          - wineskincx-23.5.0
+          - wineskincx-22.1.1
+          - wineskincx-21.2.0
+      engine_url:
+        description: "Optional direct URL to a WineskinCX engine archive (same wswine.bundle layout); overrides the 'engine' choice. Leave empty to use the chosen engine."
+        required: false
+        default: ""
+
+permissions:
+  contents: write
+
+env:
+  VERSION: "1.0.0"
+
+jobs:
+  build:
+    name: ${{ matrix.os }} – ${{ matrix.arch }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: macos-15-intel   # Intel
+            arch: x86_64
+            artifact: HaloX-Intel
+          - os: macos-latest   # Apple Silicon
+            arch: arm64
+            artifact: HaloX-Silicon
+
+    steps:
+      - uses: actions/checkout@v4
+
+      # Halo game data is not redistributable. Provide it via a private
+      # git-lfs/secret payload: game files are expected in ./game
+      # (halo.exe + data). If you store them encrypted, decrypt here.
+      - name: Fetch game files (private)
+        run: |
+          if [ -n "${{ inputs.game_zip_url }}" ]; then
+            echo "Downloading game zip..."
+            curl -L --fail -o Halo.zip "${{ inputs.game_zip_url }}"
+            echo "Downloaded Halo.zip"
+            if [ ! -f Halo.zip ]; then
+              echo "::error::Failed to download game zip"
+              exit 1
+            fi
+          elif [ -f game/halo.exe ]; then
+            echo "Game files present."
+          else
+            echo "::error::Missing game files – provide ./game or set inputs.game_zip_url."
+            exit 1
+          fi
+
+      - name: Install WineskinCX engine + runtime
+        run: |
+          set -e
+          if [ "$(uname -m)" = "arm64" ]; then
+            # The bundled engine is x86_64 -> make sure Rosetta 2 is present
+            softwareupdate --install-rosetta --agree-to-license || true
+          fi
+          mkdir -p "$RUNNER_TEMP/engine" "$RUNNER_TEMP/runtime"
+
+          # Engine: either an explicit engine_url input or the engine choice.
+          # WineskinCX 23.7.1 (WS11) is the version verified to run Halo
+          # (Gcenx Wine 11 does not work: it crashes with data-cache errors).
+          if [ -n "${{ inputs.engine_url }}" ]; then
+            ENGINE_URL="${{ inputs.engine_url }}"
+          else
+            # Map the friendly engine name to the PortingKit archive name:
+            #   wineskincx-23.7.1 -> WS11WineCX64Bit23.7.1.tar.7z
+            case "${{ inputs.engine }}" in
+              wineskincx-23.7.1) ENGINE_ARCHIVE="WS11WineCX64Bit23.7.1.tar.7z" ;;
+              wineskincx-23.6.0) ENGINE_ARCHIVE="WS11WineCX64Bit23.6.0.tar.7z" ;;
+              wineskincx-23.5.0) ENGINE_ARCHIVE="WS11WineCX64Bit23.5.0.tar.7z" ;;
+              wineskincx-22.1.1) ENGINE_ARCHIVE="WS11WineCX64Bit22.1.1.tar.7z" ;;
+              wineskincx-21.2.0) ENGINE_ARCHIVE="WS11WineCX64Bit21.2.0.tar.7z" ;;
+              *) echo "::error::Unknown engine '${{ inputs.engine }}'"; exit 1 ;;
+            esac
+            ENGINE_URL="https://github.com/vitor251093/porting-kit-engines/releases/download/wineskin/${ENGINE_ARCHIVE}"
+          fi
+          echo "Downloading engine: $ENGINE_URL"
+          curl -L --fail -o "$RUNNER_TEMP/engine/engine.tar.7z" "$ENGINE_URL"
+          tar -xJf "$RUNNER_TEMP/engine/engine.tar.7z" -C "$RUNNER_TEMP/engine"
+
+          # Locate the engine dir (wswine.bundle -> contains bin/ lib/ share/)
+          ENGINE_DIR="$(dirname "$(find "$RUNNER_TEMP/engine" -maxdepth 3 -type d -name bin | head -1)")"
+          test -x "$ENGINE_DIR/bin/wine64" || { echo "::error::Engine extraction: bin/wine64 not found in $ENGINE_DIR"; exit 1; }
+          echo "Engine: $("$ENGINE_DIR/bin/wine64" --version 2>/dev/null || echo unknown)"
+
+          # Runtime: the Wineskin wrapper template provides Contents/Frameworks
+          # (shared libs the WineskinCX engine loads at runtime: MoltenVK, SDL2,
+          # ICU, glib, ...). GStreamer.framework is excluded in build-wrapper.sh.
+          RUNTIME_URL="https://github.com/The-Wineskin-Project/Wrapper/releases/download/v1.0/Wineskin-3.0.6_1.tar.7z"
+          echo "Downloading Wineskin runtime: $RUNTIME_URL"
+          curl -L --fail -o "$RUNNER_TEMP/runtime/runtime.tar.7z" "$RUNTIME_URL"
+          tar -xJf "$RUNNER_TEMP/runtime/runtime.tar.7z" -C "$RUNNER_TEMP/runtime"
+
+          # Locate the wrapper Contents dir (contains Frameworks/)
+          RUNTIME_DIR="$(dirname "$(find "$RUNNER_TEMP/runtime" -maxdepth 4 -type d -name Frameworks | head -1)")"
+          test -d "$RUNTIME_DIR/Frameworks" || { echo "::error::Runtime extraction: Frameworks/ not found"; exit 1; }
+          echo "Runtime frameworks: $RUNTIME_DIR/Frameworks"
+
+          echo "ENGINE_DIR=$ENGINE_DIR" >> "$GITHUB_ENV"
+          echo "RUNTIME_DIR=$RUNTIME_DIR" >> "$GITHUB_ENV"
+
+      - name: Build wrapper
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          #!/bin/bash
+          chmod +x scripts/build-wrapper.sh wrapper/HaloX-Launcher.sh
+          GAME_ARG="./game"
+          if [ -f Halo.zip ]; then
+            GAME_ARG="./Halo.zip"
+          fi
+          BUILD_ARGS=()
+          BUILD_ARGS+=(--engine "$ENGINE_DIR")
+          BUILD_ARGS+=(--wineskin-runtime "$RUNTIME_DIR")
+          BUILD_ARGS+=(--game "$GAME_ARG")
+          BUILD_ARGS+=(--arch ${{ matrix.arch }})
+          BUILD_ARGS+=(--out HaloX.app)
+          BUILD_ARGS+=(--moltenvk "${{ inputs.moltenvk }}")
+          if [ "${{ inputs.with_chimera }}" = "true" ]; then
+            BUILD_ARGS+=(--chimera github)
+          fi
+          if [ "${{ inputs.with_dsoal }}" = "true" ]; then
+            BUILD_ARGS+=(--dsoal "${{ inputs.dsoal }}")
+            if [ "${{ inputs.dsoal_hrtf }}" = "true" ]; then
+              BUILD_ARGS+=(--dsoal-hrtf)
+            fi
+          fi
+          ./scripts/build-wrapper.sh "${BUILD_ARGS[@]}"
+
+      # upload-artifact does not preserve symlinks/permissions, which breaks
+      # the ad-hoc signature of the .app (Gatekeeper: "damaged"). Package with
+      # ditto first so the bundle survives intact.
+      - name: Package app
+        run: |
+          rm -f "${{ matrix.artifact }}-v${{ env.VERSION }}.zip"
+          ditto -c -k --sequesterRsrc --keepParent HaloX.app "${{ matrix.artifact }}-v${{ env.VERSION }}.zip"
+
+      - uses: actions/upload-artifact@v7
+        with:
+          # archive: false -> the ZIP is served as-is, so downloading the
+          # artifact gives a single ZIP containing HaloX.app (no nested ZIP).
+          path: ${{ matrix.artifact }}-v${{ env.VERSION }}.zip
+          archive: false
+
+  release:
+    name: Create Release
+    needs: build
+    if: ${{ github.event.inputs.publish == 'true' }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Extract release notes from CHANGELOG.md
+        run: |
+          python3 - <<'PY'
+          import re, sys, pathlib
+          version = "${{ env.VERSION }}"
+          text = pathlib.Path("CHANGELOG.md").read_text(encoding="utf-8")
+          # Match section heading for the version, e.g. "## [1.0.0]" or "## 1.0.0"
+          m = re.search(r"^##\s*\[?" + re.escape(version) + r"\]?[^\n]*\n(.*?)(?=^##\s|\Z)",
+                        text, flags=re.MULTILINE | re.DOTALL)
+          notes = m.group(1).strip() if m else f"Release v{version}"
+          pathlib.Path("RELEASE_NOTES.md").write_text(f"# HaloX v{version}\n\n{notes}\n", encoding="utf-8")
+          PY
+          cat RELEASE_NOTES.md
+
+      - uses: actions/download-artifact@v8
+        with:
+          pattern: HaloX-*
+          path: artifacts
+          merge-multiple: true
+          # Keep our ZIP as-is (the artifact was uploaded with archive: false).
+          skip-decompress: true
+
+      - name: Create GitHub Release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh release create "v${{ env.VERSION }}" \
+            --title "HaloX v${{ env.VERSION }}" \
+            --notes-file RELEASE_NOTES.md \
+            artifacts/HaloX-Intel-v${{ env.VERSION }}.zip artifacts/HaloX-Silicon-v${{ env.VERSION }}.zip
