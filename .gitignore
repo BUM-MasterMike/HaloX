@@ -3,6 +3,6 @@
 
 # Private game assets / build outputs—never commit
 game/
-dist/
+/dist/
 HaloX.app/
 *.zip

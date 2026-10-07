@@ -47,6 +47,10 @@ set -euo pipefail
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 BUILD_WRAPPER="$ROOT/scripts/build-wrapper.sh"
 
+# Run from the repo root so relative paths (--out dist/HaloX.app, --game ...)
+# always resolve against the root, no matter where the script is invoked from.
+cd "$ROOT"
+
 # Shared pretty-printing helpers (colors only on a TTY)
 . "$ROOT/scripts/common-output.sh"
 
