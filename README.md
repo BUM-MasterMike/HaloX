@@ -210,8 +210,6 @@ HALOX_D3D_RENDERER=gl /Applications/HaloX.app/Contents/MacOS/HaloX
 
 Copyright (c) 2026 BUM MasterMike – released under the [MIT License](LICENSE).
 
-Most source code is MIT unless noted otherwise. Artwork and audio are not under a license.
-
 ## Appendix: Example build output
 
 Terminal output of a local build (`./scripts/build-local.sh --game …`) including
