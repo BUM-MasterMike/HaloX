@@ -113,10 +113,10 @@ contains at minimum:
 | level maps | At least one playable level map (e.g. `bloodgulch.map`). |
 | the rest of the installed folder | Engine DLLs (`binkw32.dll`, `msvcr71.dll`, …), videos, readme. Simplest: include the **whole** installed game folder. |
 
-**Zip layout matters:** `build-wrapper.sh` extracts a zip and then looks for
-`halo.exe` **directly in the zip root** – there must be **no wrapper folder**.
-A zip that contains `Halo/halo.exe` fails; it must contain `halo.exe` at the top
-level (and `MAPS/` / the map files at the same level).
+**Zip layout:** `build-wrapper.sh` accepts both layouts. It extracts the zip and
+looks for `halo.exe` (plus `MAPS/` / the map files) on the top level; if the zip
+wraps the game in a single folder (e.g. `Halo/halo.exe`), that wrapping folder
+is stepped into automatically.
 
 Chimera and DSOAL do **not** need to be part of your game data – the build adds
 them automatically (`--chimera` / `--dsoal`). `config.txt` is left untouched.

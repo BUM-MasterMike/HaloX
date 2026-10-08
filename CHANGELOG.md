@@ -23,6 +23,9 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
   `--vidmode` in `build-local.sh` opens an interactive preset picker with a
   custom `W,H,R` option; the CI workflow gained `vidmode` (choice) and
   `vidmode_custom` (free text) inputs.
+- Game zips whose data is wrapped in a single top-level folder (e.g. a zipped
+  `Halo` directory instead of its contents) are detected and stepped into
+  automatically – `--game` now accepts both archive layouts.
 
 ### Changed
 - Engine is now **WineskinCX 23.7.1** (`WS11WineCX64Bit23.7.1`,

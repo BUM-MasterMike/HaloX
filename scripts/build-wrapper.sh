@@ -149,6 +149,17 @@ else
 fi
 
 [ -d "$GAME_SRC" ] || { echo "Game dir not found: $GAME_SRC"; exit 1; }
+
+# If the game data was packed with a wrapping folder on the top level (e.g. a
+# zipped "Halo" directory instead of its contents), step into it so halo.exe
+# is found directly in the game dir. Only acts when there is exactly one
+# entry and it is a directory.
+while [ "$(find "$GAME_SRC" -mindepth 1 -maxdepth 1 | wc -l)" -eq 1 ]; do
+    only="$(find "$GAME_SRC" -mindepth 1 -maxdepth 1)"
+    [ -d "$only" ] || break
+    GAME_SRC="$only"
+done
+
 [ -f "$GAME_SRC/halo.exe" ] || { echo "Game dir must contain halo.exe (got: $GAME_SRC)"; exit 1; }
 ok "Game source ready: $GAME_SRC (halo.exe present)"
 
