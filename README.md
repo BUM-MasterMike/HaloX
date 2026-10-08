@@ -127,8 +127,10 @@ them automatically (`--chimera` / `--dsoal`). `config.txt` is left untouched.
 The workflow `.github/workflows/build-wrapper.yml` is **manually** triggered
 (Actions → *Build HaloX Wrapper* → *Run workflow*) and produces:
 
-- `HaloX-Intel-vX.Y.Z.zip` (macos-15-intel)
-- `HaloX-Silicon-vX.Y.Z.zip` (macos-latest / Apple Silicon)
+- `HaloX-Intel-vX.Y.Z.zip` (macos-15-intel) – when `platform` is `intel` or `both`
+- `HaloX-Silicon-vX.Y.Z.zip` (macos-latest / Apple Silicon) – when `platform` is `silicon` or `both`
+
+A release contains exactly the built artifact(s) of that run.
 
 The version is fixed in the workflow (`env.VERSION`) and the changelog section of
 the same version from `CHANGELOG.md` becomes the release description.
@@ -143,6 +145,7 @@ Manual workflow inputs:
 - `dsoal_hrtf` (`true`/`false`, default `false`) – force binaural HRTF output for headphones?
 - `engine` (`wineskincx-23.7.1` default) – Wine engine to use. **WineskinCX 23.7.1 (WS11) is the verified engine for Halo**; Gcenx Wine 11 does not work (data-cache errors). Other WS11 WineskinCX versions can be selected for testing.
 - `engine_url` – optional direct URL to a WineskinCX engine archive (same `wswine.bundle` layout); overrides the `engine` choice
+- `platform` (`both` default) – which platform(s) to build: `intel`, `silicon`, or `both`. Pick a single platform when the `-vidmode` settings differ per machine (e.g. Intel without vidmode, Silicon with a preset)
 - `moltenvk` (`1.2.5` default) – MoltenVK version bundled for the optional vulkan override (`none` keeps the engine's)
 - `vidmode` (`none` default) – bundle a `-vidmode` value so the game starts at the current desktop resolution (wined3d skips the mode change); needed on scaled "Looks like" displays (e.g. MacBook Air) where Halo's first-run 640×480 mode change is refused. `none` = default build (Halo/Chimera handle the resolution); pick a preset alias (`macbook-air-13`, …) or `custom` + `vidmode_custom`
 - `vidmode_custom` – free-form `W,H,R` value (e.g. `1280,800,60`) used when `vidmode` is `custom`; leave empty for the default build

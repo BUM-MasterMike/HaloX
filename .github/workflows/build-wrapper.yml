@@ -47,6 +47,15 @@ on:
         description: "Optional direct URL to a WineskinCX engine archive (same wswine.bundle layout); overrides the 'engine' choice. Leave empty to use the chosen engine."
         required: false
         default: ""
+      platform:
+        description: "Which platform(s) to build. 'both' = Intel + Apple Silicon (default). Pick a single platform when the -vidmode settings differ per machine (e.g. Intel without vidmode, Silicon with a preset)."
+        required: false
+        default: "both"
+        type: choice
+        options:
+          - both
+          - intel
+          - silicon
       vidmode:
         description: "Bundle a -vidmode value so the game starts at the current desktop resolution (wined3d skips the mode change). Needed on scaled 'Looks like' displays (e.g. MacBook Air) where Halo's first-run 640x480 mode change is refused (Direct3D error). 'none' = default build without -vidmode (Halo/Chimera handle the resolution). Preset aliases live in scripts/vidmode-presets.sh; 'custom' takes the vidmode_custom input."
         required: false
@@ -80,6 +89,12 @@ jobs:
   build:
     name: ${{ matrix.os }} – ${{ matrix.arch }}
     runs-on: ${{ matrix.os }}
+    # Run only the selected platform(s): 'both' builds everything, a single
+    # platform skips the other matrix entry (e.g. Silicon + a -vidmode preset
+    # while the Intel machine does not need one).
+    if: >-
+      (matrix.os == 'macos-15-intel' && (inputs.platform == 'both' || inputs.platform == 'intel')) ||
+      (matrix.os == 'macos-latest' && (inputs.platform == 'both' || inputs.platform == 'silicon'))
     strategy:
       fail-fast: false
       matrix:
@@ -252,7 +267,10 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
+          shopt -s nullglob
+          FILES=( artifacts/HaloX-*-v${{ env.VERSION }}.zip )
+          test ${#FILES[@]} -gt 0 || { echo "::error::No built artifacts found"; exit 1; }
           gh release create "v${{ env.VERSION }}" \
             --title "HaloX v${{ env.VERSION }}" \
             --notes-file RELEASE_NOTES.md \
-            artifacts/HaloX-Intel-v${{ env.VERSION }}.zip artifacts/HaloX-Silicon-v${{ env.VERSION }}.zip
+            "${FILES[@]}"
