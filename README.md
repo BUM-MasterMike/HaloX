@@ -159,8 +159,8 @@ build reproduces the verified local setup.
 ## First run after download
 
 The app is ad-hoc signed but **not notarized**, so macOS Gatekeeper blocks it the
-first time after downloading („HaloX.app ist beschädigt und kann nicht geöffnet
-werden“). Unpack the ZIP and run this **once** in Terminal:
+first time after downloading ("HaloX.app is corrupted and can't be opened"). Unpack
+the ZIP and run this **once** in Terminal:
 
 > **Note:** This only applies to **downloaded builds (CI artifacts)** — a
 > locally built `HaloX.app` has no quarantine flag and runs immediately.
@@ -178,7 +178,7 @@ xattr -cr /Applications/HaloX.app
 Then open it normally (or right-click → *Open*). Adjust the path if you keep the
 app somewhere else (e.g. `~/Downloads/HaloX.app`).
 
-**Still „beschädigt“?** Re-apply the ad-hoc signature after clearing quarantine:
+**Still "corrupted"?** Re-apply the ad-hoc signature after clearing quarantine:
 
 ```bash
 codesign --force --deep --sign - /Applications/HaloX.app
