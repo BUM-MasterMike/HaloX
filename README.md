@@ -43,23 +43,31 @@ Chimera **on**, DSOAL `bundle`, MoltenVK 1.2.5. The first run downloads the
 engine + runtime (~1–2 GB total); later runs work fully offline.
 
 ```bash
-# ./game already contains halo.exe
+# Default: ./game already contains the installed Halo folder
 ./scripts/build-local.sh
 
-# game files as a zip / URL (works next to ./game)
+# Game files from a zip in the project folder
 ./scripts/build-local.sh --game ./Halo.zip
+
+# Game files downloaded from a URL first, then built
 ./scripts/build-local.sh --game-url https://example.com/Halo-full.zip
-./scripts/build-local.sh https://example.com/Halo-full.zip   # positional URL
 
-# pin a different engine or reuse an already-extracted one
-./scripts/build-local.sh --engine wineskincx-23.6.0
-./scripts/build-local.sh --engine-url https://github.com/vitor251093/porting-kit-engines/releases/download/wineskin/WS11WineCX64Bit23.7.1.tar.7z
+# A trailing positional URL is a shortcut for --game-url
+./scripts/build-local.sh https://example.com/Halo-full.zip
 
-# scaled display (e.g. MacBook Air): bundle a -vidmode value so Halo starts at
-# the current desktop resolution (no -vidmode = default build); without a value
-# an interactive preset picker opens
+# Scaled "Looks like" display (e.g. MacBook Air)? Bundle a -vidmode value so
+# Halo starts at the current desktop resolution (no -vidmode = default build).
+# Without a value an interactive preset picker opens (all aliases from
+# scripts/vidmode-presets.sh plus free W,H,R input):
+./scripts/build-local.sh --vidmode
+
+# Or pick the preset directly: an alias (macbook-air-13, ...) or a literal
 ./scripts/build-local.sh --vidmode macbook-air-13
 ./scripts/build-local.sh --vidmode 1280,800,60
+
+# Pin a different engine (other WineskinCX versions) or a direct archive URL
+./scripts/build-local.sh --engine wineskincx-23.6.0
+./scripts/build-local.sh --engine-url https://github.com/vitor251093/porting-kit-engines/releases/download/wineskin/WS11WineCX64Bit23.7.1.tar.7z
 ```
 
 What a local run looks like in the terminal (incl. the first-run engine/runtime
