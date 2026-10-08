@@ -82,22 +82,12 @@ jobs:
   build:
     name: ${{ matrix.os }} – ${{ matrix.arch }}
     runs-on: ${{ matrix.os }}
-    # Run only the selected platform(s): 'both' builds everything, a single
-    # platform skips the other matrix entry (e.g. Silicon + a -vidmode preset
-    # while the Intel machine does not need one).
-    if: >-
-      (matrix.os == 'macos-15-intel' && (inputs.platform == 'both' || inputs.platform == 'intel')) ||
-      (matrix.os == 'macos-latest' && (inputs.platform == 'both' || inputs.platform == 'silicon'))
     strategy:
       fail-fast: false
       matrix:
-        include:
-          - os: macos-15-intel   # Intel
-            arch: x86_64
-            artifact: HaloX-Intel
-          - os: macos-latest   # Apple Silicon
-            arch: arm64
-            artifact: HaloX-Silicon
+        # 'matrix' is not available in jobs.<id>.if, so the platform filter
+        # lives in the matrix itself: fromJSON + the 'platform' input.
+        include: ${{ fromJSON(inputs.platform == 'both' && '[{"os":"macos-15-intel","arch":"x86_64","artifact":"HaloX-Intel"},{"os":"macos-latest","arch":"arm64","artifact":"HaloX-Silicon"}]' || inputs.platform == 'intel' && '[{"os":"macos-15-intel","arch":"x86_64","artifact":"HaloX-Intel"}]' || '[{"os":"macos-latest","arch":"arm64","artifact":"HaloX-Silicon"}]') }}
 
     steps:
       - uses: actions/checkout@v4
