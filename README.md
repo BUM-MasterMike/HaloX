@@ -162,6 +162,11 @@ The app is ad-hoc signed but **not notarized**, so macOS Gatekeeper blocks it th
 first time after downloading („HaloX.app ist beschädigt und kann nicht geöffnet
 werden“). Unpack the ZIP and run this **once** in Terminal:
 
+> **Note:** This only applies to **downloaded builds (CI artifacts)** — a
+> locally built `HaloX.app` has no quarantine flag and runs immediately.
+> Only the workflow owner ever loads a CI artifact, so this is mostly irrelevant
+> for end users.
+
 ```bash
 chmod -R u+w /Applications/HaloX.app
 xattr -cr /Applications/HaloX.app

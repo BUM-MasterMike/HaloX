@@ -280,6 +280,9 @@ cat > "$OUT/Contents/Info.plist" <<EOF
     <key>LSMinimumSystemVersion</key>    <string>11.0</string>
     <key>NSHighResolutionCapable</key>   <true/>
     <key>CFBundleIconFile</key>          <string>AppIcon.icns</string>
+    <!-- LSUIElement: no own Dock icon -> only the in-game (Windows) icon
+         shows while halo.exe runs, so the Dock stops bouncing. -->
+    <key>LSUIElement</key>               <true/>
 </dict>
 </plist>
 EOF

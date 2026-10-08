@@ -46,6 +46,9 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 - Engine startup crash on hosts with a system GStreamer install: the
   `winegstreamer` plugin scanner could crash on unclean host plugins. The
   launcher now disables the system plugin scan (`GST_PLUGIN_SYSTEM_PATH=""`).
+- The Dock permanently bounced the `HaloX` app icon while the game ran under
+  the separate in-game (Windows) icon. The app now sets `LSUIElement`: no own
+  Dock icon, only the in-game icon shows – no more bouncing.
 - Direct3D renderer default is now `gl` (wined3d OpenGL) for Intel **and**
   Silicon, matching the reference wrapper which sets no renderer key at all.
   The explicit `gl|vulkan` build choice is gone; Vulkan/MoltenVK remains
