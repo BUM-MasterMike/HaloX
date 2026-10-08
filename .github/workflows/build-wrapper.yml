@@ -47,6 +47,28 @@ on:
         description: "Optional direct URL to a WineskinCX engine archive (same wswine.bundle layout); overrides the 'engine' choice. Leave empty to use the chosen engine."
         required: false
         default: ""
+      vidmode:
+        description: "Bundle a -vidmode value so the game starts at the current desktop resolution (wined3d skips the mode change). Needed on scaled 'Looks like' displays (e.g. MacBook Air) where Halo's first-run 640x480 mode change is refused (Direct3D error). 'none' = default build without -vidmode (Halo/Chimera handle the resolution). Preset aliases live in scripts/vidmode-presets.sh; 'custom' takes the vidmode_custom input."
+        required: false
+        default: "none"
+        type: choice
+        options:
+          - none
+          - macbook-air-13
+          - macbook-air-13-max
+          - macbook-air-13-old
+          - macbook-air-13-old-max
+          - macbook-air-15
+          - macbook-air-15-max
+          - macbook-pro-14
+          - macbook-pro-14-max
+          - macbook-pro-16
+          - macbook-pro-16-max
+          - custom
+      vidmode_custom:
+        description: "Free-form W,H,R value (e.g. 1280,800,60) used when 'vidmode' is 'custom'. Leave empty for the default build."
+        required: false
+        default: ""
 
 permissions:
   contents: write
@@ -161,6 +183,15 @@ jobs:
           BUILD_ARGS+=(--arch ${{ matrix.arch }})
           BUILD_ARGS+=(--out HaloX.app)
           BUILD_ARGS+=(--moltenvk "${{ inputs.moltenvk }}")
+          if [ "${{ inputs.vidmode }}" = "custom" ]; then
+            if [ -n "${{ inputs.vidmode_custom }}" ]; then
+              BUILD_ARGS+=(--vidmode "${{ inputs.vidmode_custom }}")
+            else
+              echo "::warning::vidmode=custom but vidmode_custom is empty; building without -vidmode"
+            fi
+          elif [ "${{ inputs.vidmode }}" != "none" ]; then
+            BUILD_ARGS+=(--vidmode "${{ inputs.vidmode }}")
+          fi
           if [ "${{ inputs.with_chimera }}" = "true" ]; then
             BUILD_ARGS+=(--chimera github)
           fi

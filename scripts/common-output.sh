@@ -2,6 +2,9 @@
 #
 # common-output.sh – shared pretty-printing helpers for the HaloX build scripts.
 #
+# Copyright (c) 2026 BUM MasterMike. Licensed under the MIT License.
+# See the LICENSE file for details.
+#
 # Provides:
 #   banner "Title" "subtitle"   – big header block
 #   section "Name"              – task section heading

@@ -16,6 +16,14 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
   (downloads/caches the WineskinCX engine and the Wineskin wrapper runtime)
 - CI lets you pick the engine (`engine` input, default `wineskincx-23.7.1`)
   or pass a direct archive URL (`engine_url`)
+- `--vidmode` build option: bundles a `-vidmode` value
+  (`Contents/Resources/vidmode.conf`) that the launcher passes to `halo.exe`,
+  so the game starts at the current desktop resolution. `--vidmode` accepts a
+  preset alias (e.g. `macbook-air-13`) or a literal `W,H,R`; the presets live
+  in `scripts/vidmode-presets.sh` (single source of truth). Bare
+  `--vidmode` in `build-local.sh` opens an interactive preset picker with a
+  custom `W,H,R` option; the CI workflow gained `vidmode` (choice) and
+  `vidmode_custom` (free text) inputs.
 
 ### Changed
 - Engine is now **WineskinCX 23.7.1** (`WS11WineCX64Bit23.7.1`,
@@ -24,6 +32,9 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 - The build bundles the Wineskin **wrapper runtime** (`Contents/Frameworks`)
   via a new `--wineskin-runtime` option; `GStreamer.framework` is excluded
   (its plugin scan crashes the engine).
+- Launcher runs Wine with debug output disabled (`WINEDEBUG=-all`) unless an
+  external `WINEDEBUG` is set – a stray `WINEDEBUG=+d3d` run otherwise writes
+  multi-GB logs that stall the game (stutter, unresponsive UI).
 
 ### Fixed
 - Crash at startup ("The game has encountered a segmentation fault" watson
@@ -40,3 +51,16 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
   Silicon, matching the reference wrapper which sets no renderer key at all.
   The explicit `gl|vulkan` build choice is gone; Vulkan/MoltenVK remains
   available only as a per-run override (`HALOX_D3D_RENDERER=vulkan`).
+- Direct3D error dialog on scaled ("Looks like") displays such as the MacBook
+  Air: on first run Halo requests `640x480`, macOS refuses the mode change
+  (`NtUserChangeDisplaySettings` -> `DISP_CHANGE_BADMODE`), and the launch
+  aborts. A `--vidmode` build makes the game request the current desktop
+  resolution, so wined3d skips the mode change entirely. The value must match
+  the display's current "Looks like" resolution; the preset table documents
+  the known devices (`scripts/vidmode-presets.sh`). Default builds (without
+  `--vidmode`) are unchanged – Halo/Chimera handle the resolution as before.
+- Documented that the startup lines `Failed to read data file header` and
+  `### FAILED TO OPEN DATA-CACHE FILE.` are cosmetic on Apple Silicon: Halo
+  1.0.10 no longer halts on cache verify errors, and every game file is
+  byte-identical to the reference build (verified via SHA-256 of all maps).
+  No fix is needed.

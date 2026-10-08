@@ -3,6 +3,9 @@
 # build-local.sh – local helper that drives build-wrapper.sh with the same
 # defaults as the CI workflow (.github/workflows/build-wrapper.yml).
 #
+# Copyright (c) 2026 BUM MasterMike. Licensed under the MIT License.
+# See the LICENSE file for details.
+#
 # It downloads and caches the same two ingredients the workflow fetches:
 #   1. the WineskinCX engine (default: WS11WineCX64Bit23.7.1 – the version
 #      verified to run Halo; Gcenx Wine 11 does not work)
@@ -31,6 +34,13 @@
 #   --dsoal-hrtf          Force DSOAL binaural HRTF output
 #   --no-dsoal            Skip DSOAL entirely
 #   --moltenvk <v|path|none>  MoltenVK for the vulkan override (default: 1.2.5)
+#
+#   --vidmode <alias|W,H,R>
+#       Bundle a -vidmode value: a preset alias from scripts/vidmode-presets.sh
+#       (e.g. macbook-air-13) or a literal W,H,R (e.g. 1280,800,60). Without a
+#       value, opens an interactive preset picker (terminal only). Default: off
+#       (no -vidmode; Halo/Chimera handle the resolution).
+#
 #   --arch <arch>         x86_64 or arm64 (default: host arch)
 #   --out <path>          Output .app (default: dist/HaloX.app)
 #   --cache-dir <dir>     Download cache (default: ~/Library/Caches/HaloX)
@@ -73,6 +83,8 @@ CACHE_DIR="${HALOX_CACHE_DIR:-"$HOME/Library/Caches/HaloX"}"
 CLEAR_CACHE=0
 NO_CACHE=0
 GAME_GIVEN=0
+VIDMODE=""
+VIDMODE_PROMPT=0
 
 usage() {
   sed -n '2,/^set -euo pipefail/p' "$0" | sed '$d'
@@ -99,6 +111,17 @@ while [ $# -gt 0 ]; do
     --dsoal)          DSOAL="$2"; shift 2 ;;
     --dsoal-hrtf)     DSOAL_HRTF=1; shift ;;
     --moltenvk)       MOLTENVK="$2"; shift 2 ;;
+    --vidmode)
+      # Optional value: --vidmode <alias|W,H,R>. Bare --vidmode (no value)
+      # opens the interactive preset picker.
+      shift
+      if [ $# -gt 0 ] && [[ "$1" != -* ]]; then
+        VIDMODE="$1"
+        shift
+      else
+        VIDMODE_PROMPT=1
+      fi
+      ;;
     --arch)           ARCH="$2"; shift 2 ;;
     --out)            OUT="$2"; shift 2 ;;
     --cache-dir)      CACHE_DIR="$2"; shift 2 ;;
@@ -142,6 +165,66 @@ if [ "$NO_CACHE" = 1 ]; then
   CACHE_DIR="$NO_CACHE_DIR"
 fi
 
+# --- Interactive --vidmode selection -------------------------------------
+# Bare --vidmode opens a picker of the known display presets plus a custom
+# W,H,R option. The picker reads the same table as build-wrapper.sh
+# (scripts/vidmode-presets.sh), so the shown values are never duplicated.
+if [ "$VIDMODE_PROMPT" = 1 ]; then
+  if [ ! -t 0 ]; then
+    fail "--vidmode without a value needs a terminal (use '--vidmode <alias|W,H,R>' instead)"
+    exit 1
+  fi
+  . "$ROOT/scripts/vidmode-presets.sh"
+
+  PRESET_NAMES=()
+  PRESET_VALUES=()
+  PRESET_DESCS=()
+  while IFS='|' read -r name val desc; do
+    [ -n "$name" ] || continue
+    PRESET_NAMES+=("$name")
+    PRESET_VALUES+=("$val")
+    PRESET_DESCS+=("$desc")
+  done <<< "$VIDMODE_PRESET_DEFS"
+
+  section "Vidmode"
+  echo "Pick a display preset, or enter a custom W,H,R that matches the"
+  echo "current 'Looks like' resolution (System Settings > Displays)."
+  echo
+  PS3="Select a preset (last option = custom input): "
+  while true; do
+    n=0
+    for i in "${!PRESET_NAMES[@]}"; do
+      n=$((n + 1))
+      printf '%2d) %s (%s) - %s\n' "$n" "${PRESET_NAMES[$i]}" "${PRESET_VALUES[$i]}" "${PRESET_DESCS[$i]}"
+    done
+    n=$((n + 1))
+    printf '%2d) Custom input (W,H,R)\n' "$n"
+    if ! read -rp "$PS3"; then
+      echo "Aborted (no input)."
+      exit 1
+    fi
+    case "$REPLY" in
+      ''|*[!0-9]*)
+        echo "Invalid choice: '$REPLY'"
+        ;;
+      *)
+        if [ "$REPLY" -ge 1 ] && [ "$REPLY" -le "$n" ]; then
+          if [ "$REPLY" -eq "$n" ]; then
+            if ! read -rp "Enter custom W,H,R (e.g. 1280,800,60): " VIDMODE; then
+              echo "Aborted (no input)."
+              exit 1
+            fi
+          else
+            VIDMODE="${PRESET_VALUES[$((REPLY - 1))]}"
+          fi
+          break
+        fi
+        echo "Invalid choice: $REPLY"
+        ;;
+    esac
+  done
+fi
+
 # --- Show configuration ---------------------------------------------------
 banner "HaloX - local build" \
   "Assembles HaloX.app with the same defaults as the CI workflow"
@@ -158,6 +241,7 @@ if [ "$WITH_CHIMERA" = 1 ]; then kv "Chimera" "on"; else kv "Chimera" "off"; fi
 if [ "$WITH_DSOAL" = 1 ]; then kv "DSOAL" "$DSOAL"; else kv "DSOAL" "off"; fi
 if [ -n "$DSOAL_HRTF" ]; then kv "DSOAL HRTF" "on"; else kv "DSOAL HRTF" "off"; fi
 kv "MoltenVK"    "$MOLTENVK"
+kv "Vidmode"     "${VIDMODE:-off}"
 kv "Output"      "$OUT"
 if [ "$CLEAR_CACHE" = 1 ]; then kv "Clear cache" "on"; fi
 if [ "$NO_CACHE" = 1 ]; then
@@ -277,6 +361,9 @@ BUILD_ARGS+=(--game "$GAME")
 BUILD_ARGS+=(--arch "$ARCH")
 BUILD_ARGS+=(--out "$OUT")
 BUILD_ARGS+=(--moltenvk "$MOLTENVK")
+if [ -n "$VIDMODE" ]; then
+  BUILD_ARGS+=(--vidmode "$VIDMODE")
+fi
 if [ "$WITH_CHIMERA" = 1 ]; then
   BUILD_ARGS+=(--chimera github)
 fi

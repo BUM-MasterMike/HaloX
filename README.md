@@ -54,6 +54,12 @@ engine + runtime (~1–2 GB total); later runs work fully offline.
 # pin a different engine or reuse an already-extracted one
 ./scripts/build-local.sh --engine wineskincx-23.6.0
 ./scripts/build-local.sh --engine-url https://github.com/vitor251093/porting-kit-engines/releases/download/wineskin/WS11WineCX64Bit23.7.1.tar.7z
+
+# scaled display (e.g. MacBook Air): bundle a -vidmode value so Halo starts at
+# the current desktop resolution (no -vidmode = default build); without a value
+# an interactive preset picker opens
+./scripts/build-local.sh --vidmode macbook-air-13
+./scripts/build-local.sh --vidmode 1280,800,60
 ```
 
 What a local run looks like in the terminal (incl. the first-run engine/runtime
@@ -82,6 +88,7 @@ download) — [example build output](#appendix-example-build-output).
 | `--dsoal`   | `bundle` (default) = checked-in tested build (DSOAL `d9fed51a` + OpenAL Soft 1.23.1); `github` = latest daily build (not recommended); or a local zip/dir |
 | `--dsoal-hrtf` | Force DSOAL binaural HRTF output for headphones |
 | `--moltenvk` | MoltenVK version bundled for the optional vulkan override (default `1.2.5`; use `none` to keep the engine's) |
+| `--vidmode`  | Bundle a `-vidmode` value (`W,H,R` or a preset alias) so the game starts at the current desktop resolution and wined3d skips the mode change. Needed on scaled "Looks like" displays (e.g. MacBook Air) that refuse Halo's first-run 640×480 mode change. Default: off. Aliases live in `scripts/vidmode-presets.sh` |
 | `--out`     | Output `.app` bundle |
 
 ## Game data requirements
@@ -129,6 +136,8 @@ Manual workflow inputs:
 - `engine` (`wineskincx-23.7.1` default) – Wine engine to use. **WineskinCX 23.7.1 (WS11) is the verified engine for Halo**; Gcenx Wine 11 does not work (data-cache errors). Other WS11 WineskinCX versions can be selected for testing.
 - `engine_url` – optional direct URL to a WineskinCX engine archive (same `wswine.bundle` layout); overrides the `engine` choice
 - `moltenvk` (`1.2.5` default) – MoltenVK version bundled for the optional vulkan override (`none` keeps the engine's)
+- `vidmode` (`none` default) – bundle a `-vidmode` value so the game starts at the current desktop resolution (wined3d skips the mode change); needed on scaled "Looks like" displays (e.g. MacBook Air) where Halo's first-run 640×480 mode change is refused. `none` = default build (Halo/Chimera handle the resolution); pick a preset alias (`macbook-air-13`, …) or `custom` + `vidmode_custom`
+- `vidmode_custom` – free-form `W,H,R` value (e.g. `1280,800,60`) used when `vidmode` is `custom`; leave empty for the default build
 
 The CI also downloads the matching Wineskin **wrapper runtime** (the
 `Contents/Frameworks` shared libraries the engine needs at runtime), so a CI
@@ -186,6 +195,8 @@ HALOX_D3D_RENDERER=gl /Applications/HaloX.app/Contents/MacOS/HaloX
 - Workflow: `.github/workflows/build-wrapper.yml`
 
 ## License
+
+Copyright (c) 2026 BUM MasterMike – released under the [MIT License](LICENSE).
 
 Most source code is MIT unless noted otherwise. Artwork and audio are not under a license.
 

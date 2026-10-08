@@ -1,6 +1,9 @@
 #!/bin/bash
 # HaloX Launcher
 # Starts Halo (halo.exe) via the bundled Wine engine.
+#
+# Copyright (c) 2026 BUM MasterMike. Licensed under the MIT License.
+# See the LICENSE file for details.
 set -u
 
 APP_DIR="$(cd "$(dirname "$0")/.." && pwd)"
@@ -31,7 +34,9 @@ case "$APP_DIR" in
 esac
 
 export WINEPREFIX="$PREFIX"
-export WINEDEBUG=-all
+# Default to no debug output, but honor an externally set WINEDEBUG so a
+# diagnosis run can do e.g. WINEDEBUG=+d3d (the launcher must not kill it).
+export WINEDEBUG="${WINEDEBUG:--all}"
 
 # WineskinCX-style engines load their bundled libraries (including MoltenVK)
 # from Contents/Frameworks and wine/lib via the fallback dylib search path.
@@ -105,6 +110,25 @@ if [ -L "$TARGET" ]; then
     fi
 elif [ ! -e "$TARGET" ]; then
     ln -s "$GAME_DIR" "$TARGET"
+fi
+
+# Optional build-time -vidmode (Contents/Resources/vidmode.conf, e.g.
+# "1470,956,60"). Scaled "Looks like" displays (e.g. MacBook Air) refuse
+# the mode change Halo requests on first run (640x480), which surfaces as a
+# Direct3D error dialog. Forcing the game to start at the current desktop
+# resolution makes wined3d skip the mode change entirely. A -vidmode passed
+# explicitly on the command line wins.
+VIDMODE=""
+if [ -f "$RES/vidmode.conf" ]; then
+    VIDMODE="$(tr -d '[:space:]' < "$RES/vidmode.conf")"
+fi
+for a in "$@"; do
+    case "$a" in
+        -vidmode) VIDMODE="" ;;
+    esac
+done
+if [ -n "$VIDMODE" ]; then
+    set -- "$@" -vidmode "$VIDMODE"
 fi
 
 # -novideo -use21 -console: exactly the flags used by the known-good

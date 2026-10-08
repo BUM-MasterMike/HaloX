@@ -2,6 +2,9 @@
 #
 # build-wrapper.sh – assembles a runnable HaloX.app wine wrapper.
 #
+# Copyright (c) 2026 BUM MasterMike. Licensed under the MIT License.
+# See the LICENSE file for details.
+#
 # Usage:
 #   ./scripts/build-wrapper.sh \
 #       --engine /path/to/wine/Contents/Resources/wine \
@@ -11,31 +14,39 @@
 #
 # --game may also be a zip archive containing the full installed Halo folder.
 # Optional:
-#   --chimera github|/path/to/chimera-release.zip|dir  overlays Chimera
-#   --dsoal   bundle|github|/path/to/DSOAL.zip|dir     overlays DSOAL (3D audio);
-#                                                      bundle = checked-in tested
-#                                                      build (default, recommended)
-#   --dsoal-hrtf                                       force headphone HRTF (with --dsoal)
+#
+#   --chimera github|/path/to/chimera-release.zip|dir
+#       Overlays Chimera.
+#
+#   --dsoal bundle|github|/path/to/DSOAL.zip|dir
+#       Overlays DSOAL (3D audio); bundle = checked-in tested build
+#       (default, recommended).
+#
+#   --dsoal-hrtf
+#       Force headphone HRTF (with --dsoal).
+#
 #   The D3D renderer is always wined3d OpenGL ("gl"), exactly like the
 #   reference wrapper (which sets no renderer key). Vulkan is available only
 #   as a per-run override: HALOX_D3D_RENDERER=vulkan.
-#   --moltenvk 1.2.5|/path/to/libMoltenVK.dylib|none   MoltenVK (Vulkan->Metal)
-#                                                      bundled with the engine for
-#                                                      the vulkan override
-#                                                      (default 1.2.5; newer ones
-#                                                      crash on old GPUs)
-#   --wineskin-runtime <Contents-dir-of-wrapper>       Wineskin wrapper runtime
-#                                                      (a dir containing
-#                                                      Frameworks/). WineskinCX
-#                                                      engines (WS11WineCX64Bit...)
-#                                                      load shared libs (MoltenVK,
-#                                                      SDL2, ICU, ...) from
-#                                                      Contents/Frameworks at
-#                                                      runtime; without them wine
-#                                                      fails with
-#                                                      "Library not loaded".
-#                                                      GStreamer.framework is
-#                                                      excluded (crash source).
+#
+#   --moltenvk 1.2.5|/path/to/libMoltenVK.dylib|none
+#       MoltenVK (Vulkan -> Metal) bundled with the engine for the vulkan
+#       override (default 1.2.5; newer ones crash on old GPUs).
+#
+#   --wineskin-runtime <Contents-dir-of-wrapper>
+#       Wineskin wrapper runtime (a dir containing Frameworks/). WineskinCX
+#       engines (WS11WineCX64Bit...) load shared libs (MoltenVK, SDL2, ICU,
+#       ...) from Contents/Frameworks at runtime; without them wine fails
+#       with "Library not loaded". GStreamer.framework is excluded (crash
+#       source).
+#
+#   --vidmode <preset|W,H,R>
+#       Bundle a -vidmode value: the launcher passes it to halo.exe so the
+#       game starts at the current desktop resolution and wined3d skips the
+#       mode change. Needed on scaled "Looks like" displays (e.g. MacBook
+#       Air) that refuse Halo's first-run 640x480 mode change. Default: off.
+#       <preset> is an alias from scripts/vidmode-presets.sh (e.g.
+#       macbook-air-13); W,H,R is a literal value (e.g. 1280,800,60).
 #
 set -euo pipefail
 
@@ -55,6 +66,7 @@ DSOAL=""
 DSOAL_HRTF=""
 MOLTENVK="1.2.5"
 WINESKIN_RUNTIME=""
+VIDMODE=""
 
 while [ $# -gt 0 ]; do
   case "$1" in
@@ -68,6 +80,7 @@ while [ $# -gt 0 ]; do
     --dsoal-hrtf) DSOAL_HRTF=1; shift;;
     --moltenvk) MOLTENVK="$2"; shift 2;;
     --wineskin-runtime) WINESKIN_RUNTIME="$2"; shift 2;;
+    --vidmode) VIDMODE="$2"; shift 2;;
     *) echo "Unknown argument: $1"; exit 1;;
   esac
 done
@@ -78,6 +91,20 @@ done
 if [ -z "$GAME" ] && [ -z "$GAME_ZIP_URL" ]; then echo "Missing --game or --game-zip-url"; exit 1; fi
 
 [ -d "$ENGINE/bin" ] || { echo "Engine dir must contain bin/ (got: $ENGINE)"; exit 1; }
+
+# Resolve --vidmode: a preset alias (scripts/vidmode-presets.sh) or a literal
+# W,H,R. The launcher passes the value to halo.exe; it must match the
+# display's current "Looks like" resolution for wined3d to skip the mode
+# change. Validate now so a bad value fails the build, not the first launch.
+if [ -n "$VIDMODE" ]; then
+  . "$SCRIPT_DIR/vidmode-presets.sh"
+  if resolved="$(vidmode_preset_lookup "$VIDMODE")"; then
+    VIDMODE="$resolved"
+  fi
+  if ! printf '%s' "$VIDMODE" | grep -qE '^[0-9]+,[0-9]+,[0-9]+$'; then
+    echo "Invalid --vidmode value: '$VIDMODE' (expected a preset alias or W,H,R)"; exit 1
+  fi
+fi
 
 # --- Show configuration ---------------------------------------------------
 banner "HaloX - wrapper builder" \
@@ -92,6 +119,7 @@ kv "DSOAL"            "${DSOAL:-off}"
 if [ -n "$DSOAL_HRTF" ]; then kv "DSOAL HRTF" "on"; else kv "DSOAL HRTF" "off"; fi
 kv "MoltenVK"         "$MOLTENVK"
 kv "Wineskin runtime" "${WINESKIN_RUNTIME:-off}"
+kv "Vidmode"          "${VIDMODE:-off}"
 
 if [ -n "$GAME_ZIP_URL" ]; then
   if [ -f "$GAME_ZIP_URL" ]; then
@@ -304,6 +332,16 @@ fi
 if [ -f "$SCRIPT_DIR/../assets/AppIcon.icns" ]; then
   cp "$SCRIPT_DIR/../assets/AppIcon.icns" "$OUT/Contents/Resources/AppIcon.icns"
   ok "Bundled app icon (AppIcon.icns)"
+fi
+
+# 2d) Optional -vidmode preset (Resources/vidmode.conf). The launcher passes
+#     it to halo.exe so the game starts at the current desktop resolution
+#     (wined3d skips the mode change). Needed for scaled "Looks like"
+#     displays (e.g. MacBook Air) that refuse Halo's first-run 640x480
+#     mode change.
+if [ -n "$VIDMODE" ]; then
+  printf '%s\n' "$VIDMODE" > "$OUT/Contents/Resources/vidmode.conf"
+  ok "Bundled vidmode: $VIDMODE (Resources/vidmode.conf)"
 fi
 
 # 3) Game files

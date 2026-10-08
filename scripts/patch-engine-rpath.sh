@@ -3,6 +3,9 @@
 # patch-engine-rpath.sh – adds real LC_RPATH entries to every bundled engine
 # binary/dylib that references @rpath, so the bundle works on Apple Silicon.
 #
+# Copyright (c) 2026 BUM MasterMike. Licensed under the MIT License.
+# See the LICENSE file for details.
+#
 # Why: the WineskinCX engine links its shared libs as @rpath without any
 # LC_RPATH entry (e.g. wineserver -> @rpath/libinotify.0.dylib). Intel's dyld
 # silently falls back to DYLD_FALLBACK_LIBRARY_PATH for such lookups, but
