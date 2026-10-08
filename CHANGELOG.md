@@ -9,7 +9,6 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 ### Added
 - Initial Wine-based wrapper build for macOS (Intel + Apple Silicon)
 - GitHub Actions workflow producing `HaloX-Intel` and `HaloX-Silicon` artifacts
-- Automatic release creation with notes extracted from this file
 - Launcher runs the game with the known-good flags `-novideo -use21 -console`
   and supports WineskinCX-style engines (`bin/wine64` + `Contents/Frameworks`)
 - `scripts/build-local.sh`: builds with the same defaults as the CI workflow

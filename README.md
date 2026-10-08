@@ -21,8 +21,7 @@ double-clickable `.app`.
 
 - 📦 One-command assembly of a runnable `HaloX.app` (`scripts/build-wrapper.sh`)
 - 🖥️ Runs on **Intel** (native) and **Apple Silicon** (via Rosetta 2)
-- 🔁 Manual, versioned CI builds via GitHub Actions → automatic GitHub Release
-- 🧾 Release notes are taken automatically from `CHANGELOG.md`
+- 🔁 Manual, versioned CI builds via GitHub Actions (artifacts, no release)
 
 ## Building the wrapper
 
@@ -122,7 +121,7 @@ level (and `MAPS/` / the map files at the same level).
 Chimera and DSOAL do **not** need to be part of your game data – the build adds
 them automatically (`--chimera` / `--dsoal`). `config.txt` is left untouched.
 
-## CI / Releases
+## CI
 
 The workflow `.github/workflows/build-wrapper.yml` is **manually** triggered
 (Actions → *Build HaloX Wrapper* → *Run workflow*) and produces:
@@ -130,14 +129,11 @@ The workflow `.github/workflows/build-wrapper.yml` is **manually** triggered
 - `HaloX-Intel-vX.Y.Z.zip` (macos-15-intel) – when `platform` is `intel` or `both`
 - `HaloX-Silicon-vX.Y.Z.zip` (macos-latest / Apple Silicon) – when `platform` is `silicon` or `both`
 
-A release contains exactly the built artifact(s) of that run.
-
-The version is fixed in the workflow (`env.VERSION`) and the changelog section of
-the same version from `CHANGELOG.md` becomes the release description.
+No GitHub Release is created – the ZIPs appear in the run's **Artifacts**.
+The version is fixed in the workflow (`env.VERSION`) and shows up in the artifact names.
 
 Manual workflow inputs:
 
-- `publish` (`true`/`false`) – only set to `true` when you want a GitHub release
 - `game_zip_url` – URL of a zip with the full installed Halo folder (preferred for CI); same layout requirements as `--game` (see [Game data requirements](#game-data-requirements))
 - `with_chimera` (`true`/`false`, default `true`) – include Chimera in the build?
 - `with_dsoal` (`true`/`false`, default `true`) – include DSOAL (3D audio) in the build?

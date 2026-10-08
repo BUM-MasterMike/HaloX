@@ -4,12 +4,32 @@ name: Build HaloX Wrapper
 on:
   workflow_dispatch:
     inputs:
-      publish:
-        description: "Create a GitHub Release with the built artifacts (set to false for a pure test build)"
+      platform:
+        description: "Which platform(s) to build. 'both' = Intel + Apple Silicon (default). Pick a single platform when the -vidmode settings differ per machine (e.g. Intel without vidmode, Silicon with a preset)."
         required: false
-        default: "false"
+        default: "both"
+        type: choice
+        options:
+          - both
+          - intel
+          - silicon
       game_zip_url:
         description: "Optional URL to a zip of the installed Halo folder; used instead of ./game"
+        required: false
+        default: ""
+      engine:
+        description: "Wine engine to use. WineskinCX 23.7.1 (WS11) is the verified engine for Halo (Gcenx Wine 11 does not work); other WS11 WineskinCX versions can be tested."
+        required: false
+        default: "wineskincx-23.7.1"
+        type: choice
+        options:
+          - wineskincx-23.7.1
+          - wineskincx-23.6.0
+          - wineskincx-23.5.0
+          - wineskincx-22.1.1
+          - wineskincx-21.2.0
+      engine_url:
+        description: "Optional direct URL to a WineskinCX engine archive (same wswine.bundle layout); overrides the 'engine' choice. Leave empty to use the chosen engine."
         required: false
         default: ""
       with_chimera:
@@ -32,30 +52,6 @@ on:
         description: "MoltenVK version bundled for the optional vulkan per-run override (default 1.2.5; use 'none' to keep the engine's)"
         required: false
         default: "1.2.5"
-      engine:
-        description: "Wine engine to use. WineskinCX 23.7.1 (WS11) is the verified engine for Halo (Gcenx Wine 11 does not work); other WS11 WineskinCX versions can be tested."
-        required: false
-        default: "wineskincx-23.7.1"
-        type: choice
-        options:
-          - wineskincx-23.7.1
-          - wineskincx-23.6.0
-          - wineskincx-23.5.0
-          - wineskincx-22.1.1
-          - wineskincx-21.2.0
-      engine_url:
-        description: "Optional direct URL to a WineskinCX engine archive (same wswine.bundle layout); overrides the 'engine' choice. Leave empty to use the chosen engine."
-        required: false
-        default: ""
-      platform:
-        description: "Which platform(s) to build. 'both' = Intel + Apple Silicon (default). Pick a single platform when the -vidmode settings differ per machine (e.g. Intel without vidmode, Silicon with a preset)."
-        required: false
-        default: "both"
-        type: choice
-        options:
-          - both
-          - intel
-          - silicon
       vidmode:
         description: "Bundle a -vidmode value so the game starts at the current desktop resolution (wined3d skips the mode change). Needed on scaled 'Looks like' displays (e.g. MacBook Air) where Halo's first-run 640x480 mode change is refused (Direct3D error). 'none' = default build without -vidmode (Halo/Chimera handle the resolution). Preset aliases live in scripts/vidmode-presets.sh; 'custom' takes the vidmode_custom input."
         required: false
@@ -78,9 +74,6 @@ on:
         description: "Free-form W,H,R value (e.g. 1280,800,60) used when 'vidmode' is 'custom'. Leave empty for the default build."
         required: false
         default: ""
-
-permissions:
-  contents: write
 
 env:
   VERSION: "1.0.0"
@@ -232,45 +225,3 @@ jobs:
           # artifact gives a single ZIP containing HaloX.app (no nested ZIP).
           path: ${{ matrix.artifact }}-v${{ env.VERSION }}.zip
           archive: false
-
-  release:
-    name: Create Release
-    needs: build
-    if: ${{ github.event.inputs.publish == 'true' }}
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-
-      - name: Extract release notes from CHANGELOG.md
-        run: |
-          python3 - <<'PY'
-          import re, sys, pathlib
-          version = "${{ env.VERSION }}"
-          text = pathlib.Path("CHANGELOG.md").read_text(encoding="utf-8")
-          # Match section heading for the version, e.g. "## [1.0.0]" or "## 1.0.0"
-          m = re.search(r"^##\s*\[?" + re.escape(version) + r"\]?[^\n]*\n(.*?)(?=^##\s|\Z)",
-                        text, flags=re.MULTILINE | re.DOTALL)
-          notes = m.group(1).strip() if m else f"Release v{version}"
-          pathlib.Path("RELEASE_NOTES.md").write_text(f"# HaloX v{version}\n\n{notes}\n", encoding="utf-8")
-          PY
-          cat RELEASE_NOTES.md
-
-      - uses: actions/download-artifact@v8
-        with:
-          pattern: HaloX-*
-          path: artifacts
-          merge-multiple: true
-          # Keep our ZIP as-is (the artifact was uploaded with archive: false).
-          skip-decompress: true
-
-      - name: Create GitHub Release
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: |
-          shopt -s nullglob
-          FILES=( artifacts/HaloX-*-v${{ env.VERSION }}.zip )
-          test ${#FILES[@]} -gt 0 || { echo "::error::No built artifacts found"; exit 1; }
-          gh release create "v${{ env.VERSION }}" \
-            --title "HaloX v${{ env.VERSION }}" \
-            --notes-file RELEASE_NOTES.md \
-            "${FILES[@]}"

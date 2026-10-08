@@ -7,15 +7,15 @@ Guidance for AI coding agents (and humans) working in this repository.
 - `scripts/build-wrapper.sh` – assembles `HaloX.app` from a Wine engine + game files
 - `scripts/build-local.sh` – local build driver: calls `build-wrapper.sh` with the same defaults as the CI workflow (downloads/caches the WineskinCX engine + Wineskin wrapper runtime; accepts a game dir, zip, or URL)
 - `wrapper/HaloX-Launcher.sh` – in-bundle launcher: sets `WINEPREFIX`, runs Wine (via Rosetta 2 on Apple Silicon), starts `halo.exe`
-- `.github/workflows/build-wrapper.yml` – manual-only CI (release is opt-in)
-- `CHANGELOG.md` – single source of truth for release notes; only include sections that actually have entries (no TBD placeholders)
+- `.github/workflows/build-wrapper.yml` – manual-only CI (builds + uploads artifacts; no GitHub Release)
+- `CHANGELOG.md` – single source of truth for the changelog; only include sections that actually have entries (no TBD placeholders)
 - `assets/` – app icon (`AppIcon.icns`, bundled as `Contents/Resources/AppIcon.icns`) and README logo (`shield.png`)
 
 ## Conventions
 
 - All scripts, comments, and log messages must be **in English**.
 - CI trigger: `workflow_dispatch` only – no `push` trigger.
-- The workflow publishes a release only when the `publish` input is `"true"`; default is `"false"`.
+- The workflow never creates GitHub Releases – it builds and uploads the ZIPs as run artifacts.
 - Version is fixed at the top of the workflow via `env.VERSION` and must match the topmost section in `CHANGELOG.md` (e.g. `## [1.0.0]`).
 - Game binaries/assets (`halo.exe`, maps, etc.) are not redistributable – never commit them. CI expects them at `./game/` (provided privately).
 - Do not commit automatically; ask before every `git commit`.
@@ -50,4 +50,4 @@ Directly (engine = a WineskinCX `wswine.bundle` dir, runtime = wrapper `Contents
 1. Update `env.VERSION` in the workflow.
 2. Add the matching section in `CHANGELOG.md`.
 3. Commit (user pushes).
-4. Actions → *Build HaloX Wrapper* → Run workflow → set `publish=true`.
+4. Actions → *Build HaloX Wrapper* → Run workflow → download the ZIPs from the run's Artifacts.
