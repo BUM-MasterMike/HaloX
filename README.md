@@ -212,8 +212,9 @@ Copyright (c) 2026 BUM MasterMike – released under the [MIT License](LICENSE).
 
 ## Appendix: Example build output
 
-Terminal output of a local build (`./scripts/build-local.sh --game …`) including
-the first-run download of the WineskinCX engine and the Wineskin runtime, as seen
-in macOS Terminal:
+Terminal output of a local build (`./scripts/build-local.sh --game …`) with the
+WineskinCX engine and the Wineskin runtime already cached (the first run
+downloads them, later runs reuse `~/Library/Caches/HaloX`), as seen in macOS
+Terminal:
 
 <img src="assets/terminal-output.webp" alt="Terminal output of a local HaloX build">
