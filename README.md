@@ -22,6 +22,9 @@ double-clickable `.app`.
 - 📦 One-command assembly of a runnable `HaloX.app` (`scripts/build-wrapper.sh`)
 - 🖥️ Runs on **Intel** (native) and **Apple Silicon** (via Rosetta 2)
 - 🔁 Manual, versioned CI builds via GitHub Actions (artifacts, no release)
+- 🔔 Shows a "HaloX is starting..." notification the moment the app opens, so
+  the game's startup is visible even though the wrapper itself has no Dock
+  icon (the banner fades on its own once the game window appears)
 
 ## Building the wrapper
 
@@ -199,6 +202,17 @@ forced the Vulkan renderer; run once without the override:
 ```bash
 HALOX_D3D_RENDERER=gl /Applications/HaloX.app/Contents/MacOS/HaloX
 ```
+
+**Ping to online servers fluctuates every ~0.5 s (jumping to ~250 ms)?**
+
+Root cause: macOS did not recognize the wrapper as a game, so it ran with
+background QoS / App Nap (timer coalescing) instead of Game Mode – the same
+Mac under Bootcamp/Windows is unaffected. HaloX now declares itself as a game
+in its `Info.plist` (`LSApplicationCategoryType` = `public.app-category.games`,
+which also enables **Game Mode** automatically in fullscreen) and disables App
+Nap (`NSAppSleepDisabled`); `LSSupportsGameMode` covers Game Mode on macOS 26+.
+No macOS settings need to be changed – a build
+with these plist keys (any build >= this commit) plays cleanly.
 
 ## Development
 

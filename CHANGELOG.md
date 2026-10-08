@@ -4,6 +4,22 @@ All notable changes to HaloX are documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [1.1.0]
+
+### Added
+- The launcher posts a macOS notification ("HaloX is starting...") the moment
+  the app opens, so the game's startup is visible immediately. The banner
+  fades on its own once Wine brings up the game window.
+
+### Fixed
+- Periodic ping fluctuation (~250 ms every ~0.5 s) on online servers: macOS
+  did not recognize the wrapper as a game and ran it with background QoS /
+  App Nap (timer coalescing) instead of Game Mode. The Info.plist now sets
+  `LSApplicationCategoryType` to `public.app-category.games` (macOS enables
+  Game Mode automatically in fullscreen) and disables App Nap via
+  `NSAppSleepDisabled`; `LSSupportsGameMode` covers Game Mode on macOS 26+.
+  No macOS settings need to be changed.
+
 ## [1.0.0]
 
 ### Added

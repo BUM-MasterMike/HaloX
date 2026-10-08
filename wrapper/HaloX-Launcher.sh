@@ -33,6 +33,11 @@ case "$APP_DIR" in
         ;;
 esac
 
+# Immediate launch feedback: the wrapper runs agent-style (no Dock icon) and
+# Wine needs a moment before the game window appears. The banner fades on its
+# own, so nothing stays on screen once the game is running.
+osascript -e 'display notification "HaloX is starting..." with title "HaloX"' 2>/dev/null || true
+
 export WINEPREFIX="$PREFIX"
 # Default to no debug output, but honor an externally set WINEDEBUG so a
 # diagnosis run can do e.g. WINEDEBUG=+d3d (the launcher must not kill it).

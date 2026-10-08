@@ -56,6 +56,11 @@ SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 # Shared pretty-printing helpers (colors only on a TTY)
 . "$SCRIPT_DIR/common-output.sh"
 
+# App version – single source for the Info.plist written below. Must match
+# env.VERSION in .github/workflows/build-wrapper.yml and the topmost section
+# in CHANGELOG.md.
+VERSION="1.1.0"
+
 ENGINE=""
 GAME=""
 GAME_ZIP_URL=""
@@ -286,10 +291,21 @@ cat > "$OUT/Contents/Info.plist" <<EOF
     <key>CFBundleIdentifier</key>        <string>com.halox.app</string>
     <key>CFBundleExecutable</key>        <string>HaloX</string>
     <key>CFBundlePackageType</key>       <string>APPL</string>
-    <key>CFBundleShortVersionString</key><string>1.0</string>
-    <key>CFBundleVersion</key>           <string>1</string>
+    <key>CFBundleShortVersionString</key><string>${VERSION}</string>
+    <key>CFBundleVersion</key>           <string>${VERSION}</string>
     <key>LSMinimumSystemVersion</key>    <string>11.0</string>
     <key>NSHighResolutionCapable</key>   <true/>
+    <!-- LSApplicationCategoryType: macOS uses this to recognize the app as a
+         game and enables Game Mode automatically in fullscreen (CPU/GPU
+         priority, reduced background load). Without it, Wine wrappers run with
+         background QoS, which caused periodic network/ping fluctuation. -->
+    <key>LSApplicationCategoryType</key> <string>public.app-category.games</string>
+    <!-- LSSupportsGameMode: macOS 26+ moves Game Mode to this explicit
+         opt-in; LSApplicationCategoryType covers Sonoma/Sequoia (14/15). -->
+    <key>LSSupportsGameMode</key>        <true/>
+    <!-- NSAppSleepDisabled: prevents App Nap from periodically throttling the
+         process (timer coalescing / background scheduling). -->
+    <key>NSAppSleepDisabled</key>        <true/>
     <key>CFBundleIconFile</key>          <string>AppIcon.icns</string>
     <!-- LSUIElement: no own Dock icon -> only the in-game (Windows) icon
          shows while halo.exe runs, so the Dock stops bouncing. -->
