@@ -22,9 +22,6 @@ double-clickable `.app`.
 - 📦 One-command assembly of a runnable `HaloX.app` (`scripts/build-wrapper.sh`)
 - 🖥️ Runs on **Intel** (native) and **Apple Silicon** (via Rosetta 2)
 - 🔁 Manual, versioned CI builds via GitHub Actions (artifacts, no release)
-- 🔔 Shows a "HaloX is starting..." notification the moment the app opens, so
-  the game's startup is visible even though the wrapper itself has no Dock
-  icon (the banner fades on its own once the game window appears)
 
 ## Building the wrapper
 
@@ -124,41 +121,6 @@ is stepped into automatically.
 Chimera and DSOAL do **not** need to be part of your game data – the build adds
 them automatically (`--chimera` / `--dsoal`). `config.txt` is left untouched.
 
-## CI
-
-The workflow `.github/workflows/build-wrapper.yml` is **manually** triggered
-(Actions → *Build HaloX Wrapper* → *Run workflow*) and produces:
-
-- `HaloX-Intel-vX.Y.Z.zip` (macos-15-intel) – when `platform` is `intel` or `both`
-- `HaloX-Silicon-vX.Y.Z.zip` (macos-latest / Apple Silicon) – when `platform` is `silicon` or `both`
-
-No GitHub Release is created – the ZIPs appear in the run's **Artifacts**.
-The version is fixed in the workflow (`env.VERSION`) and shows up in the artifact names.
-
-Manual workflow inputs:
-
-- `game_zip_url` – URL of a zip with the full installed Halo folder (preferred for CI); same layout requirements as `--game` (see [Game data requirements](#game-data-requirements))
-- `with_chimera` (`true`/`false`, default `true`) – include Chimera in the build?
-- `with_dsoal` (`true`/`false`, default `true`) – include DSOAL (3D audio) in the build?
-- `dsoal` (`bundle`/`github`/URL, default `bundle`) – DSOAL source: `bundle` = the checked-in tested build (recommended), `github` = latest daily build, or a URL to a DSOAL archive
-- `dsoal_hrtf` (`true`/`false`, default `false`) – force binaural HRTF output for headphones?
-- `engine` (`wineskincx-23.7.1` default) – Wine engine to use. **WineskinCX 23.7.1 (WS11) is the verified engine for Halo**; Gcenx Wine 11 does not work (data-cache errors). Other WS11 WineskinCX versions can be selected for testing.
-- `engine_url` – optional direct URL to a WineskinCX engine archive (same `wswine.bundle` layout); overrides the `engine` choice
-- `platform` (`both` default) – which platform(s) to build: `intel`, `silicon`, or `both`. Pick a single platform when the `-vidmode` settings differ per machine (e.g. Intel without vidmode, Silicon with a preset)
-- `moltenvk` (`1.2.5` default) – MoltenVK version bundled for the optional vulkan override (`none` keeps the engine's)
-- `vidmode` (`none` default) – bundle a `-vidmode` value so the game starts at the current desktop resolution (wined3d skips the mode change); needed on scaled "Looks like" displays (e.g. MacBook Air) where Halo's first-run 640×480 mode change is refused. `none` = default build (Halo/Chimera handle the resolution); pick a preset alias (`macbook-air-13`, …) or `custom` + `vidmode_custom`
-- `vidmode_custom` – free-form `W,H,R` value (e.g. `1280,800,60`) used when `vidmode` is `custom`; leave empty for the default build
-
-The CI also downloads the matching Wineskin **wrapper runtime** (the
-`Contents/Frameworks` shared libraries the engine needs at runtime), so a CI
-build reproduces the verified local setup.
-
-> **Renderer note:** HaloX always renders Direct3D through Wine's OpenGL path
-> (`gl`), exactly like the known-good reference wrapper. This works on Intel and
-> Apple Silicon and needs no Vulkan/MoltenVK. If you want to experiment with the
-> Vulkan renderer for a single run, use `HALOX_D3D_RENDERER=vulkan` before
-> launching the app.
-
 ## First run after download
 
 The app is ad-hoc signed but **not notarized**, so macOS Gatekeeper blocks it the
@@ -203,16 +165,89 @@ forced the Vulkan renderer; run once without the override:
 HALOX_D3D_RENDERER=gl /Applications/HaloX.app/Contents/MacOS/HaloX
 ```
 
-**Ping to online servers fluctuates every ~0.5 s (jumping to ~250 ms)?**
+**Ping to online servers fluctuates, or the connection hiccups for a moment every ~0.5 s?**
 
-Root cause: macOS did not recognize the wrapper as a game, so it ran with
-background QoS / App Nap (timer coalescing) instead of Game Mode – the same
-Mac under Bootcamp/Windows is unaffected. HaloX now declares itself as a game
-in its `Info.plist` (`LSApplicationCategoryType` = `public.app-category.games`,
-which also enables **Game Mode** automatically in fullscreen) and disables App
-Nap (`NSAppSleepDisabled`); `LSSupportsGameMode` covers Game Mode on macOS 26+.
-No macOS settings need to be changed – a build
-with these plist keys (any build >= this commit) plays cleanly.
+That is usually macOS, not HaloX. macOS runs a set of "Continuity" features
+that periodically use the Wi-Fi radio in the background:
+
+- **AWDL** (*Apple Wireless Direct Link*, the `awdl0` interface) is the
+  peer-to-peer Wi-Fi channel behind **AirDrop**, **AirPlay**, **Sidecar**,
+  **Handoff/Continuity** and **Universal Control**. While it is active, macOS
+  briefly pulls the Wi-Fi radio off your normal channel to look for nearby
+  Apple devices – typically once per second for ~50–100 ms. That is exactly
+  what shows up as a short ping spike or stall.
+- **Universal Control**, **Handoff** and **Universal Clipboard** keep AWDL and
+  Bluetooth awake while they are enabled.
+- Nearby Apple devices (iPhone, iPad, another Mac) can trigger AWDL on your Mac
+  even if you are not using those features yourself.
+
+It happens below the game, so it affects any low-latency app (online gaming,
+cloud gaming, video calls); the same Mac under Boot Camp is unaffected.
+
+**What you can do (optional).** Before playing, turn off the Continuity
+features you do not need:
+
+- System Settings → General → **AirDrop & Continuity**: turn off **AirDrop**,
+  **Handoff**, **AirPlay Receiver** and **Continuity Camera**.
+- System Settings → Displays → **Advanced**: turn off **Universal Control**
+  ("Allow your pointer and keyboard to move between any nearby Mac or iPad").
+- Keep Bluetooth on for your keyboard/mouse – it is only the Continuity
+  features that need to go.
+
+Advanced (needs the admin password): take the AWDL interface down for the
+current session. This disables AirDrop/AirPlay/Handoff/Universal Control until
+you re-enable it (it also comes back after sleep/reboot):
+
+```bash
+sudo ifconfig awdl0 down   # off
+sudo ifconfig awdl0 up     # back on
+```
+
+Sources:
+
+- [Meter – macOS/AWDL PSA](https://www.meter.com/mac-osx-awdl-psa)
+- [The Register – AirDrop causes Wi-Fi jitter](https://www.theregister.com/on-prem/2025/10/23/apples-airdrop-makes-weird-latency-spikes-for-wi-fi-wonks/1422197)
+- [Apple – Universal Control](https://support.apple.com/en-ca/102459)
+- [Apple – Handoff](https://support.apple.com/guide/mac-help/hand-off-tasks-between-devices-mchl732d3c0a/mac)
+- [AWDLControl (GitHub) – disables AWDL while gaming](https://github.com/james-howard/AWDLControl)
+
+<details>
+<summary><strong>CI – GitHub Actions workflow</strong></summary>
+
+The workflow `.github/workflows/build-wrapper.yml` is **manually** triggered
+(Actions → *Build HaloX Wrapper* → *Run workflow*) and produces:
+
+- `HaloX-Intel-vX.Y.Z.zip` (macos-15-intel) – when `platform` is `intel` or `both`
+- `HaloX-Silicon-vX.Y.Z.zip` (macos-latest / Apple Silicon) – when `platform` is `silicon` or `both`
+
+No GitHub Release is created – the ZIPs appear in the run's **Artifacts**.
+The version is fixed in the workflow (`env.VERSION`) and shows up in the artifact names.
+
+Manual workflow inputs:
+
+- `game_zip_url` – URL of a zip with the full installed Halo folder (preferred for CI); same layout requirements as `--game` (see [Game data requirements](#game-data-requirements))
+- `with_chimera` (`true`/`false`, default `true`) – include Chimera in the build?
+- `with_dsoal` (`true`/`false`, default `true`) – include DSOAL (3D audio) in the build?
+- `dsoal` (`bundle`/`github`/URL, default `bundle`) – DSOAL source: `bundle` = the checked-in tested build (recommended), `github` = latest daily build, or a URL to a DSOAL archive
+- `dsoal_hrtf` (`true`/`false`, default `false`) – force binaural HRTF output for headphones?
+- `engine` (`wineskincx-23.7.1` default) – Wine engine to use. **WineskinCX 23.7.1 (WS11) is the verified engine for Halo**; Gcenx Wine 11 does not work (data-cache errors). Other WS11 WineskinCX versions can be selected for testing.
+- `engine_url` – optional direct URL to a WineskinCX engine archive (same `wswine.bundle` layout); overrides the `engine` choice
+- `platform` (`both` default) – which platform(s) to build: `intel`, `silicon`, or `both`. Pick a single platform when the `-vidmode` settings differ per machine (e.g. Intel without vidmode, Silicon with a preset)
+- `moltenvk` (`1.2.5` default) – MoltenVK version bundled for the optional vulkan override (`none` keeps the engine's)
+- `vidmode` (`none` default) – bundle a `-vidmode` value so the game starts at the current desktop resolution (wined3d skips the mode change); needed on scaled "Looks like" displays (e.g. MacBook Air) where Halo's first-run 640×480 mode change is refused. `none` = default build (Halo/Chimera handle the resolution); pick a preset alias (`macbook-air-13`, …) or `custom` + `vidmode_custom`
+- `vidmode_custom` – free-form `W,H,R` value (e.g. `1280,800,60`) used when `vidmode` is `custom`; leave empty for the default build
+
+The CI also downloads the matching Wineskin **wrapper runtime** (the
+`Contents/Frameworks` shared libraries the engine needs at runtime), so a CI
+build reproduces the verified local setup.
+
+> **Renderer note:** HaloX always renders Direct3D through Wine's OpenGL path
+> (`gl`), exactly like the known-good reference wrapper. This works on Intel and
+> Apple Silicon and needs no Vulkan/MoltenVK. If you want to experiment with the
+> Vulkan renderer for a single run, use `HALOX_D3D_RENDERER=vulkan` before
+> launching the app.
+
+</details>
 
 ## Development
 

@@ -297,8 +297,7 @@ cat > "$OUT/Contents/Info.plist" <<EOF
     <key>NSHighResolutionCapable</key>   <true/>
     <!-- LSApplicationCategoryType: macOS uses this to recognize the app as a
          game and enables Game Mode automatically in fullscreen (CPU/GPU
-         priority, reduced background load). Without it, Wine wrappers run with
-         background QoS, which caused periodic network/ping fluctuation. -->
+         priority, reduced background load). -->
     <key>LSApplicationCategoryType</key> <string>public.app-category.games</string>
     <!-- LSSupportsGameMode: macOS 26+ moves Game Mode to this explicit
          opt-in; LSApplicationCategoryType covers Sonoma/Sequoia (14/15). -->

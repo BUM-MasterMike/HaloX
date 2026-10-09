@@ -34,9 +34,32 @@ case "$APP_DIR" in
 esac
 
 # Immediate launch feedback: the wrapper runs agent-style (no Dock icon) and
-# Wine needs a moment before the game window appears. The banner fades on its
-# own, so nothing stays on screen once the game is running.
-osascript -e 'display notification "HaloX is starting..." with title "HaloX"' 2>/dev/null || true
+# Wine needs a moment before the game window appears. Show a centered dialog
+# with the HaloX icon from the moment the app opens. It stays for a fixed time
+# (DIALOG_SECONDS) and is then closed - by that point the fullscreen game
+# window is up. A fixed delay is used because the halo.exe process is created
+# well before the game window is actually visible, so any process-based
+# watcher would dismiss the dialog too early.
+# NSAlert (JXA) instead of `display dialog`: the latter always shows default
+# buttons (Cancel/OK); here the single default button is created and then
+# hidden, so the dialog shows no buttons at all.
+DIALOG_SECONDS=20
+
+osascript -l JavaScript -e "
+ObjC.import('AppKit');
+var a = $.NSAlert.alloc.init;
+a.messageText = 'HaloX is starting...';
+a.icon = $.NSImage.alloc.initWithContentsOfFile('$APP_DIR/Resources/AppIcon.icns');
+a.addButtonWithTitle('OK');
+a.buttons.objectAtIndex(0).setHidden(true);
+a.runModal;
+" 2>/dev/null &
+
+DIALOG_PID=$!
+
+# Close the dialog after the fixed display time (the game window is covering
+# the screen by then; halo.exe itself starts much earlier).
+( sleep "$DIALOG_SECONDS"; kill "$DIALOG_PID" 2>/dev/null || true ) &
 
 export WINEPREFIX="$PREFIX"
 # Default to no debug output, but honor an externally set WINEDEBUG so a
