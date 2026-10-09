@@ -1,6 +1,6 @@
 name: Build HaloX Wrapper
 
-# Manual trigger only. Version is fixed via env.VERSION below.
+# Manual trigger only. Version is read from the topmost CHANGELOG.md section.
 on:
   workflow_dispatch:
     inputs:
@@ -75,9 +75,6 @@ on:
         required: false
         default: ""
 
-env:
-  VERSION: "1.1.0"
-
 jobs:
   build:
     name: ${{ matrix.os }} – ${{ matrix.arch }}
@@ -91,6 +88,17 @@ jobs:
 
     steps:
       - uses: actions/checkout@v4
+
+      - name: Read version from CHANGELOG
+        run: |
+          # Single source of truth: the topmost "## [x.y.z]" heading.
+          VERSION="$(sed -nE 's/^## \[([0-9]+\.[0-9]+\.[0-9]+)\].*/\1/p' CHANGELOG.md | head -1)"
+          if [ -z "$VERSION" ]; then
+            echo "::error::Could not read version from CHANGELOG.md (expected a '## [x.y.z]' heading)."
+            exit 1
+          fi
+          echo "VERSION=$VERSION" >> "$GITHUB_ENV"
+          echo "Version: $VERSION"
 
       # Halo game data is not redistributable. Provide it via a private
       # git-lfs/secret payload: game files are expected in ./game

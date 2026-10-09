@@ -27,8 +27,10 @@ double-clickable `.app`.
 
 ### Locally (recommended)
 
-**1. Get the repo** (the game files are not in it — you provide your own copy
-of the installed Halo CE folder, see [Game data requirements](#game-data-requirements)):
+**1. Get the project** – clone it, or download `HaloX-builder-vX.Y.Z.zip` from
+the [Releases](https://github.com/BUM-MasterMike/HaloX/releases) page and unpack
+it. The game files are not in it — you provide your own copy of the installed
+Halo CE folder (see [Game data requirements](#game-data-requirements)):
 
 ```bash
 git clone git@github.com:BUM-MasterMike/HaloX.git

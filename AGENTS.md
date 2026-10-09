@@ -7,7 +7,8 @@ Guidance for AI coding agents (and humans) working in this repository.
 - `scripts/build-wrapper.sh` – assembles `HaloX.app` from a Wine engine + game files
 - `scripts/build-local.sh` – local build driver: calls `build-wrapper.sh` with the same defaults as the CI workflow (downloads/caches the WineskinCX engine + Wineskin wrapper runtime; accepts a game dir, zip, or URL)
 - `wrapper/HaloX-Launcher.sh` – in-bundle launcher: sets `WINEPREFIX`, runs Wine (via Rosetta 2 on Apple Silicon), starts `halo.exe`
-- `.github/workflows/build-wrapper.yml` – manual-only CI (builds + uploads artifacts; no GitHub Release)
+- `.github/workflows/build-wrapper.yml` – manual-only CI: builds the app ZIPs and uploads them as run artifacts. It **never** creates a GitHub Release.
+- `.github/workflows/publish.yml` – manual-only: publishes the **project** (source + build scripts) as a GitHub Release with a `HaloX-builder-vX.Y.Z.zip` asset, so users can download and build locally. It **never** publishes the built `HaloX.app` artifacts.
 - `CHANGELOG.md` – single source of truth for the changelog; only include sections that actually have entries (no TBD placeholders)
 - `assets/` – app icon (`AppIcon.icns`, bundled as `Contents/Resources/AppIcon.icns`) and README logo (`shield.png`)
 
@@ -15,8 +16,9 @@ Guidance for AI coding agents (and humans) working in this repository.
 
 - All scripts, comments, and log messages must be **in English**.
 - CI trigger: `workflow_dispatch` only – no `push` trigger.
-- The workflow never creates GitHub Releases – it builds and uploads the ZIPs as run artifacts.
-- Version is fixed at the top of the workflow via `env.VERSION` and must match the topmost section in `CHANGELOG.md` (e.g. `## [1.0.0]`).
+- `build-wrapper.yml` builds and uploads the app ZIPs as run artifacts; it never creates a GitHub Release.
+- `publish.yml` creates a GitHub Release of the **project** only – never of the built `HaloX.app` artifacts.
+- Version is the topmost `CHANGELOG.md` section (e.g. `## [1.0.0]`); the workflows read it from there, so the CHANGELOG is the single source of truth.
 - Game binaries/assets (`halo.exe`, maps, etc.) are not redistributable – never commit them. CI expects them at `./game/` (provided privately).
 - Do not commit automatically; ask before every `git commit`.
 - **Never `git push`** – the user pushes. Commit locally, tell the user, and stop.
@@ -47,7 +49,7 @@ Directly (engine = a WineskinCX `wswine.bundle` dir, runtime = wrapper `Contents
 
 ## Release flow
 
-1. Update `env.VERSION` in the workflow.
-2. Add the matching section in `CHANGELOG.md`.
-3. Commit (user pushes).
-4. Actions → *Build HaloX Wrapper* → Run workflow → download the ZIPs from the run's Artifacts.
+1. Add/update the topmost section in `CHANGELOG.md` (this is the version).
+2. Commit (user pushes).
+3. Actions → *Build HaloX Wrapper* → Run workflow → download the app ZIPs from the run's Artifacts.
+4. Actions → *Publish project release* → Run workflow → creates the GitHub Release with the `HaloX-builder-vX.Y.Z.zip` project asset.
