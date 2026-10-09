@@ -213,8 +213,10 @@ Sources:
 - [Apple – Handoff](https://support.apple.com/guide/mac-help/hand-off-tasks-between-devices-mchl732d3c0a/mac)
 - [AWDLControl (GitHub) – disables AWDL while gaming](https://github.com/james-howard/AWDLControl)
 
+## CI
+
 <details>
-<summary><strong>CI – GitHub Actions workflow</strong></summary>
+<summary>GitHub Actions workflow</summary>
 
 The workflow `.github/workflows/build-wrapper.yml` is **manually** triggered
 (Actions → *Build HaloX Wrapper* → *Run workflow*) and produces:
@@ -223,7 +225,8 @@ The workflow `.github/workflows/build-wrapper.yml` is **manually** triggered
 - `HaloX-Silicon-vX.Y.Z.zip` (macos-latest / Apple Silicon) – when `platform` is `silicon` or `both`
 
 No GitHub Release is created – the ZIPs appear in the run's **Artifacts**.
-The version is fixed in the workflow (`env.VERSION`) and shows up in the artifact names.
+The version is taken from the topmost `CHANGELOG.md` section and shows up in the
+artifact names.
 
 Manual workflow inputs:
 
@@ -255,7 +258,7 @@ build reproduces the verified local setup.
 
 - Launcher script: `wrapper/HaloX-Launcher.sh`
 - Build script: `scripts/build-wrapper.sh`
-- Workflow: `.github/workflows/build-wrapper.yml`
+- Workflows: `.github/workflows/build-wrapper.yml` (app build) and `.github/workflows/publish.yml` (project release)
 
 ## License
 
