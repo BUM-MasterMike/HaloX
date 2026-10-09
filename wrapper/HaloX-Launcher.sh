@@ -43,7 +43,7 @@ esac
 # NSAlert (JXA) instead of `display dialog`: the latter always shows default
 # buttons (Cancel/OK); here the single default button is created and then
 # hidden, so the dialog shows no buttons at all.
-DIALOG_SECONDS=20
+DIALOG_SECONDS=15
 
 osascript -l JavaScript -e "
 ObjC.import('AppKit');
