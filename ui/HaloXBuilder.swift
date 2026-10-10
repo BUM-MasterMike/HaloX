@@ -1224,7 +1224,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             temporary read-only copy that has no scripts/ folder next to it - even though the \
             real app is in the right place. Fix it once in Terminal:
 
-            xattr -dr com.apple.quarantine '/path/to/HaloXBuilder.app'
+            xattr -cr '/path/to/HaloXBuilder.app'
 
             (use the real path of the app inside the unzipped HaloX-X.Y.Z folder). \
             Then start HaloX Builder again.
