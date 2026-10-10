@@ -1,6 +1,6 @@
 #!/bin/bash
 # HaloX Launcher
-# Starts Halo (halo.exe) via the bundled Wine engine.
+# Starts Halo (halo.exe / haloce.exe) via the bundled Wine engine.
 #
 # Copyright (c) 2026 BUM MasterMike. Licensed under the MIT License.
 # See the LICENSE file for details.
@@ -18,6 +18,14 @@ else
     exit 1
 fi
 GAME_DIR="$RES/game"
+
+# Game executable: halo.exe (Combat Evolved) or haloce.exe
+# (Custom Edition). The build records the detected name in
+# Resources/game-exe; default to halo.exe.
+GAME_EXE="halo.exe"
+if [ -f "$RES/game-exe" ]; then
+    GAME_EXE="$(tr -d '[:space:]' < "$RES/game-exe")"
+fi
 
 # Per-user Wine prefix (writable, persistent)
 PREFIX="$HOME/Library/Application Support/HaloX/prefix"
@@ -162,4 +170,4 @@ fi
 # -novideo -use21 -console: exactly the flags used by the known-good
 #   WineskinCX 23.7.1 wrapper (skip intro movies, D3D2.0 path, in-game console)
 cd "$TARGET"
-exec ${WINE_CMD[@]+"${WINE_CMD[@]}"} "$WINE" "halo.exe" -novideo -use21 -console "$@"
+exec ${WINE_CMD[@]+"${WINE_CMD[@]}"} "$WINE" "$GAME_EXE" -novideo -use21 -console "$@"

@@ -160,23 +160,34 @@ fi
 [ -d "$GAME_SRC" ] || { echo "Game dir not found: $GAME_SRC"; exit 1; }
 
 # If the game data was packed with a wrapping folder on the top level (e.g. a
-# zipped "Halo" directory instead of its contents), step into it so halo.exe
-# is found directly in the game dir. Only acts when there is exactly one
-# entry and it is a directory.
+# zipped "Halo" directory instead of its contents), step into it so the game
+# executable is found directly in the game dir. Only acts when there is exactly
+# one entry and it is a directory.
 while [ "$(find "$GAME_SRC" -mindepth 1 -maxdepth 1 | wc -l)" -eq 1 ]; do
     only="$(find "$GAME_SRC" -mindepth 1 -maxdepth 1)"
     [ -d "$only" ] || break
     GAME_SRC="$only"
 done
 
-[ -f "$GAME_SRC/halo.exe" ] || { echo "Game dir must contain halo.exe (got: $GAME_SRC)"; exit 1; }
+# The game executable: halo.exe (Combat Evolved) or haloce.exe
+# (Custom Edition) - both share the same installation layout, so
+# either one is accepted. The detected name is recorded in the
+# bundle (Resources/game-exe) so the launcher knows what to start.
+GAME_EXE=""
+for exe in halo.exe haloce.exe; do
+  if [ -f "$GAME_SRC/$exe" ]; then
+    GAME_EXE="$exe"
+    break
+  fi
+done
+[ -n "$GAME_EXE" ] || { echo "Game dir must contain halo.exe or haloce.exe (got: $GAME_SRC)"; exit 1; }
 # Archives may store read-only or exotic permission bits. Make the
 # extracted game source writable, listable and executable so the
 # Chimera overlay below cannot fail with EPERM when it sets
 # permissions or extended attributes.
 chflags -R nouchg,noschg "$GAME_SRC" 2>/dev/null || true
 chmod -R u+rwx "$GAME_SRC" 2>/dev/null || true
-ok "Game source ready: $GAME_SRC (halo.exe present)"
+ok "Game source ready: $GAME_SRC ($GAME_EXE present)"
 
 # Overlay Chimera if provided
 if [ -n "$CHIMERA" ]; then
@@ -403,6 +414,11 @@ if [ -n "$VIDMODE" ]; then
   printf '%s\n' "$VIDMODE" > "$OUT/Contents/Resources/vidmode.conf"
   ok "Bundled vidmode: $VIDMODE (Resources/vidmode.conf)"
 fi
+
+# 2d-2) Record the game executable (halo.exe for Combat Evolved,
+#       haloce.exe for Custom Edition) so the launcher starts the
+#       right one.
+printf '%s\n' "$GAME_EXE" > "$OUT/Contents/Resources/game-exe"
 
 # 3) Game files
 cp -R "$GAME_SRC" "$OUT/Contents/Resources/game"

@@ -16,7 +16,8 @@
 macOS systems (Sonoma 14 and later) where the original 32-bit executables no longer run.
 It packages the game with a modern [Wine](https://www.winehq.org/) engine into a
 double-clickable `.app` — and ships with a native GUI builder app, so no terminal
-is needed for local builds.
+is needed for local builds. Both **Halo: Combat Evolved** and **Halo: Custom
+Edition** are supported (same engine, same installation layout).
 
 ## Features
 
@@ -146,23 +147,50 @@ download) — [example build output](#appendix-example-build-output).
 | `--vidmode`  | Bundle a `-vidmode` value (`W,H,R` or a preset alias) so the game starts at the current desktop resolution and wined3d skips the mode change. Needed on scaled "Looks like" displays (e.g. MacBook Air) that refuse Halo's first-run 640×480 mode change. Default: off. Aliases live in `scripts/vidmode-presets.sh` |
 | `--out`     | Output `.app` bundle |
 
+## Supported game editions
+
+HaloX works with the installed Windows Halo folder of both **Halo: Combat
+Evolved** and **Halo: Custom Edition**. The two editions are based on the same
+engine and use the same installation layout (`halo.exe`/`haloce.exe`, maps,
+engine DLLs), so the HaloX Builder treats them identically — just point it at
+the installed folder of either edition. The builder detects the game
+executable automatically (`halo.exe` or `haloce.exe`) and launches the right
+one.
+
+> **Chimera requires the official 1.00.10.xxxx patch.** Chimera only works with
+> the official patch **1.00.10.xxxx**, for Combat Evolved and Custom Edition. The
+> patch can be found online and is freely available for download. Make sure the
+> Halo installation you use for the HaloX Builder **already includes** this
+> official patch — otherwise Chimera will not work.
+>
+> There are indications that the game should **not** be started right
+> after installing Halo, but only after the official patch has been
+> applied. Usually you patch your Halo installation **on Windows** before
+> you need it for HaloX. Patching afterwards from inside the Wine wrapper
+> is theoretically possible, but is more involved and requires
+> some wine expertise.
+
 ## Game data requirements
 
 `halo.exe` and the game assets are **not redistributable**, so the build never
 fetches them – you provide them via `--game` (or the CI `game_zip_url` input).
-The build itself only validates that `halo.exe` is present; for the game to
-actually run it also needs its map data. A **full installed Halo CE folder**
+The build itself only validates that the game executable (`halo.exe` or
+`haloce.exe`) is present; for the game to actually run it also needs its map
+data. A **full installed Halo folder** (Combat Evolved or Custom Edition)
 contains at minimum:
 
 | Required | Notes |
 |---|---|
-| `halo.exe` | The build fails if this is missing. |
+| `halo.exe` or `haloce.exe` | The game executable — `halo.exe` (Combat Evolved) or `haloce.exe` (Custom Edition). The build fails if neither is present. |
 | `bitmaps.map`, `sounds.map` | Shared map data. In the reference GOG-style layout these live inside a `MAPS/` subfolder; a classic layout keeps them next to `halo.exe`. Both work – the engine resolves the folder case-insensitively. |
 | level maps | At least one playable level map (e.g. `bloodgulch.map`). |
 | the rest of the installed folder | Engine DLLs (`binkw32.dll`, `msvcr71.dll`, …), videos, readme. Simplest: include the **whole** installed game folder. |
 
+The installation must already include the official patch **1.00.10.xxxx** — Chimera
+does not work without it (see [Supported game editions](#supported-game-editions)).
+
 **Zip layout:** `build-wrapper.sh` accepts both layouts. It extracts the zip and
-looks for `halo.exe` (plus `MAPS/` / the map files) on the top level; if the zip
+looks for `halo.exe`/`haloce.exe` (plus `MAPS/` / the map files) on the top level; if the zip
 wraps the game in a single folder (e.g. `Halo/halo.exe`), that wrapping folder
 is stepped into automatically.
 

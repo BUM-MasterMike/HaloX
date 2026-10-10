@@ -4,6 +4,25 @@ All notable changes to HaloX are documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [1.3.0]
+
+### Added
+- **Halo: Custom Edition** support: a `haloce.exe` installation is
+  now accepted alongside the `halo.exe` (Combat Evolved) layout. The
+  build detects the game executable (`halo.exe` or `haloce.exe`),
+  records it in the bundle (`Contents/Resources/game-exe`) and the
+  launcher starts the right one — the same builder works for both
+  editions.
+
+### Changed
+- The game data check accepts `halo.exe` or `haloce.exe` (build
+  scripts and the `build-wrapper.yml` workflow).
+- The README documents both supported editions and the Chimera patch
+  requirement (official patch **1.00.10.xxxx**, applied on Windows
+  before the installation is used for HaloX; patching afterwards
+  inside the Wine wrapper is possible but involved and needs wine
+  expertise).
+
 ## [1.2.0]
 
 ### Added
@@ -22,6 +41,20 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
   checked in.
 - The version is now read from the topmost `CHANGELOG.md` section in both
   workflows and both build scripts, so there is exactly one place to bump it.
+
+### Fixed
+- The Chimera overlay could fail with `cp ... Permission denied`
+  exactly on `fonts/`: the release archive stores entries that extract
+  without read/execute bits (`d-----x---` with the system `bsdtar`,
+  e.g. when the Builder app runs the script). The build now clears
+  immutable flags (`chflags -R nouchg,noschg`) and sets `u+rwx` on
+  the game source and the extracted Chimera tree before copying, and
+  prints diagnostics (modes, flags, owner, free space) if the copy
+  still fails.
+- The `build.yml` "Publish release" checkbox was ignored: the boolean
+  input was compared to the string `'true'`, which is always false, so
+  all release steps were skipped. The condition now compares against
+  the boolean directly (`inputs.publish == true`).
 
 ## [1.1.0]
 

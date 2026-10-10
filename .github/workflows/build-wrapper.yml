@@ -113,7 +113,7 @@ jobs:
               echo "::error::Failed to download game zip"
               exit 1
             fi
-          elif [ -f game/halo.exe ]; then
+          elif [ -f game/halo.exe ] || [ -f game/haloce.exe ]; then
             echo "Game files present."
           else
             echo "::error::Missing game files – provide ./game or set inputs.game_zip_url."
