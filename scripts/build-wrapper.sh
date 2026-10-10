@@ -171,9 +171,11 @@ done
 
 [ -f "$GAME_SRC/halo.exe" ] || { echo "Game dir must contain halo.exe (got: $GAME_SRC)"; exit 1; }
 # Archives may store read-only or exotic permission bits. Make the
-# extracted game source writable so the Chimera overlay below cannot
-# fail with EPERM when it sets permissions or extended attributes.
-chmod -R u+w "$GAME_SRC" 2>/dev/null || true
+# extracted game source writable, listable and executable so the
+# Chimera overlay below cannot fail with EPERM when it sets
+# permissions or extended attributes.
+chflags -R nouchg,noschg "$GAME_SRC" 2>/dev/null || true
+chmod -R u+rwx "$GAME_SRC" 2>/dev/null || true
 ok "Game source ready: $GAME_SRC (halo.exe present)"
 
 # Overlay Chimera if provided
@@ -226,9 +228,24 @@ PY
   # downloaded release: cp would otherwise propagate them into the app
   # bundle and can fail with "Permission denied" while doing so (seen on
   # runs with a nearly full disk, where APFS xattr writes fail with EPERM).
-  xattr -cr "$CHIMERA_SRC" 2>/dev/null || true
-  chmod -R u+w "$CHIMERA_SRC" 2>/dev/null || true
-  cp -Rf "$CHIMERA_SRC/." "$GAME_SRC/"
+  xattr -cr "$CHIMERA_SRC" 2>/dev/null || echo "warn: could not clear all xattrs in $CHIMERA_SRC" >&2
+  # Clear immutable flags and make the whole tree writable, listable and
+  # executable. Archives (7z) can store non-listable or read-only entries;
+  # cp then fails with "Permission denied" when reading the source (readdir)
+  # or copying extended attributes, even though the files are user-owned.
+  chflags -R nouchg,noschg "$CHIMERA_SRC" 2>/dev/null || true
+  chmod -R u+rwx "$CHIMERA_SRC"
+  if ! cp -Rf "$CHIMERA_SRC/." "$GAME_SRC/"; then
+    echo "ERROR: Chimera overlay failed. Diagnostics:" >&2
+    ls -laO "$CHIMERA_SRC" | head -30
+    ls -laO "$CHIMERA_SRC/fonts" 2>/dev/null | head
+    stat -f "src=%N mode=%Sp owner=%Su flags=%Sf" "$CHIMERA_SRC/fonts" 2>/dev/null
+    stat -f "dst=%N mode=%Sp owner=%Su flags=%Sf" "$GAME_SRC" 2>/dev/null
+    stat -f "dst_fonts=%N mode=%Sp owner=%Su flags=%Sf" "$GAME_SRC/fonts" 2>/dev/null
+    xattr -l "$CHIMERA_SRC/fonts" 2>/dev/null | head
+    df -h "$GAME_SRC"
+    exit 1
+  fi
   ok "Applied Chimera from $CHIMERA_SRC"
 fi
 
