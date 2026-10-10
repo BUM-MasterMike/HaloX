@@ -4,6 +4,25 @@ All notable changes to HaloX are documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [1.2.0]
+
+### Added
+- **`HaloXBuilder.app`**: a native Swift/AppKit GUI front-end for
+  `scripts/build-local.sh` (`ui/HaloXBuilder.swift`, built by `ui/build.sh`),
+  so local builds can now be made from a window instead of the terminal.
+  Every `build-local.sh` option is a field prefilled with the script's
+  defaults (arch, output, engine/runtime, game source/URL, Chimera, DSOAL,
+  MoltenVK, vidmode presets or a custom `W,H,R`, cache dir); the output
+  streams live, the result appears in a sheet, and a button clears the
+  download cache. It has an Edit menu (Cmd+C/V/X/A), a Window menu and an
+  About dialog with build date and a link to github.com/BUM-MasterMike.
+- The release ZIP (`HaloX-builder-vX.Y.Z.zip` from the `build.yml` workflow)
+  now contains a **freshly cross-compiled universal (arm64 + x86_64)**
+  `HaloXBuilder.app`, built on CI on every run — the `.app` is never
+  checked in.
+- The version is now read from the topmost `CHANGELOG.md` section in both
+  workflows and both build scripts, so there is exactly one place to bump it.
+
 ## [1.1.0]
 
 ### Added

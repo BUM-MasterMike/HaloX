@@ -1,0 +1,124 @@
+name: Build project (optional release)
+
+# Manual trigger only. Builds a fresh universal (arm64 + x86_64)
+# HaloXBuilder.app on this run's macOS runner, then either publishes the
+# *project* (source + build scripts + the built HaloXBuilder.app) as a
+# GitHub Release or only builds it - the "Publish release" checkbox on the
+# Run workflow dialog decides (checked by default).
+# The .app is never checked in - it is always built fresh on every run.
+# It never publishes the built HaloX.app artifacts - those are produced
+# as run artifacts by build-wrapper.yml and are intentionally not released.
+on:
+  workflow_dispatch:
+    inputs:
+      publish:
+        description: >-
+          Create the GitHub Release for this version (default). Uncheck to
+          only build and upload the artifacts, without creating a release.
+        type: boolean
+        default: true
+
+# Required to create the tag and the release (only used when publishing).
+permissions:
+  contents: write
+
+# Never run two publishes at once.
+concurrency:
+  group: project-release
+  cancel-in-progress: false
+
+jobs:
+  build:
+    # macOS runner: needed to compile the Swift builder. The macOS SDK is
+    # universal, so a single runner cross-compiles both the arm64 and the
+    # x86_64 slice (ui/build.sh defaults to ARCH=universal).
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Read version from CHANGELOG
+        run: |
+          # Single source of truth: the topmost "## [x.y.z]" heading.
+          VERSION="$(sed -nE 's/^## \[([0-9]+\.[0-9]+\.[0-9]+)\].*/\1/p' CHANGELOG.md | head -1)"
+          if [ -z "$VERSION" ]; then
+            echo "::error::Could not read version from CHANGELOG.md (expected a '## [x.y.z]' heading)."
+            exit 1
+          fi
+          echo "VERSION=$VERSION" >> "$GITHUB_ENV"
+          echo "Version: $VERSION"
+
+      - name: Refuse to overwrite an existing release
+        if: inputs.publish == 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          if gh release view "v$VERSION" >/dev/null 2>&1; then
+            echo "::error::Release v$VERSION already exists - refusing to overwrite."
+            exit 1
+          fi
+
+      - name: Build release notes from CHANGELOG
+        if: inputs.publish == 'true'
+        run: |
+          {
+            echo "> See README.md for build instructions."
+            echo
+            awk -v ver="$VERSION" '
+              $0 ~ "^## \\[" ver "\\]" { grab = 1; next }
+              grab && /^## \[/ { exit }
+              grab { print }
+            ' CHANGELOG.md
+          } > RELEASE_NOTES.md
+          echo "----- release notes -----"
+          cat RELEASE_NOTES.md
+
+      - name: Build HaloXBuilder (universal arm64 + x86_64)
+        run: |
+          # Fresh build on every run (the .app is not checked in).
+          # ui/build.sh defaults to ARCH=universal.
+          chmod +x ui/build.sh
+          ./ui/build.sh
+          if ! lipo -info "HaloXBuilder.app/Contents/MacOS/HaloXBuilder" | grep -qi "arm64" \
+             || ! lipo -info "HaloXBuilder.app/Contents/MacOS/HaloXBuilder" | grep -qi "x86_64"; then
+            echo "::error::HaloXBuilder is not a universal (arm64 + x86_64) binary."
+            exit 1
+          fi
+          lipo -info "HaloXBuilder.app/Contents/MacOS/HaloXBuilder"
+
+      - name: Build project ZIP (source + build scripts + HaloXBuilder.app)
+        run: |
+          # Same layout as before (HaloX-$VERSION/), plus the freshly
+          # built HaloXBuilder.app inside that folder.
+          STAGE="$(mktemp -d)"
+          git archive --format=tar \
+            --prefix="HaloX-$VERSION/" \
+            -o "$STAGE/project.tar" HEAD
+          tar -xf "$STAGE/project.tar" -C "$STAGE"
+          cp -R "HaloXBuilder.app" "$STAGE/HaloX-$VERSION/HaloXBuilder.app"
+          (
+            cd "$STAGE"
+            zip -rq "HaloX-builder-v$VERSION.zip" "HaloX-$VERSION"
+          )
+          mv "$STAGE/HaloX-builder-v$VERSION.zip" "HaloX-builder-v$VERSION.zip"
+          rm -rf "$STAGE"
+          ls -lh "HaloX-builder-v$VERSION.zip"
+
+      - name: Upload project ZIP as artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: HaloX-builder-v${{ env.VERSION }}
+          path: HaloX-builder-v${{ env.VERSION }}.zip
+          if-no-files-found: error
+
+      - name: Create GitHub Release
+        if: inputs.publish == 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release create "v$VERSION" \
+            --title "HaloX $VERSION" \
+            --notes-file RELEASE_NOTES.md \
+            --target "$GITHUB_SHA" \
+            "HaloX-builder-v$VERSION.zip"

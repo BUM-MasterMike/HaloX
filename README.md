@@ -15,13 +15,46 @@
 **HaloX** brings Halo CE (the classic Mac-era Windows build) back to life on current
 macOS systems (Sonoma 14 and later) where the original 32-bit executables no longer run.
 It packages the game with a modern [Wine](https://www.winehq.org/) engine into a
-double-clickable `.app`.
+double-clickable `.app` — and ships with a native GUI builder app, so no terminal
+is needed for local builds.
 
 ## Features
 
 - 📦 One-command assembly of a runnable `HaloX.app` (`scripts/build-wrapper.sh`)
 - 🖥️ Runs on **Intel** (native) and **Apple Silicon** (via Rosetta 2)
+- 🧰 Native GUI builder (`HaloXBuilder.app`, universal, ready to run in the release)
 - 🔁 Manual, versioned CI builds via GitHub Actions (artifacts, no release)
+
+## HaloX Builder (GUI)
+
+A native macOS app (`HaloXBuilder.app`, Swift/AppKit) that drives the local
+build from a window instead of the terminal — every `scripts/build-local.sh`
+option is a field prefilled with the script's defaults (arch, output,
+engine/runtime, game source/URL, Chimera, DSOAL, MoltenVK, vidmode, cache).
+The build output streams in live and the result shows in a sheet; a button
+clears the download cache.
+
+<p align="center">
+  <img src="assets/halox-builder.webp" alt="HaloX Builder GUI">
+</p>
+
+### Ready to run
+
+The release ZIP (`HaloX-builder-vX.Y.Z.zip`) contains a ready-to-run
+`HaloXBuilder.app` — a **universal** binary for **Apple Silicon and Intel**
+(arm64 + x86_64), built fresh by CI on every release. Just download, unzip
+and double-click.
+
+The GUI runs `scripts/build-local.sh` underneath, so all options below apply
+unchanged.
+
+### Building the GUI yourself
+
+```bash
+./ui/build.sh              # universal (arm64 + x86_64) by default
+ARCH=arm64  ./ui/build.sh  # only the arm64 slice
+ARCH=x86_64 ./ui/build.sh  # only the Intel slice
+```
 
 ## Building the wrapper
 
@@ -258,7 +291,7 @@ build reproduces the verified local setup.
 
 - Launcher script: `wrapper/HaloX-Launcher.sh`
 - Build script: `scripts/build-wrapper.sh`
-- Workflows: `.github/workflows/build-wrapper.yml` (app build) and `.github/workflows/publish.yml` (project release)
+- Workflows: `.github/workflows/build-wrapper.yml` (app build) and `.github/workflows/build.yml` (project release, incl. the freshly built `HaloXBuilder.app`)
 
 ## License
 

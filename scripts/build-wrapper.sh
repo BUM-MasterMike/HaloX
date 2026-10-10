@@ -56,10 +56,14 @@ SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 # Shared pretty-printing helpers (colors only on a TTY)
 . "$SCRIPT_DIR/common-output.sh"
 
-# App version – single source for the Info.plist written below. Must match
-# env.VERSION in .github/workflows/build-wrapper.yml and the topmost section
-# in CHANGELOG.md.
-VERSION="1.1.0"
+# App version for the Info.plist written below. Single source of truth:
+# the topmost "## [x.y.z]" section in CHANGELOG.md (the CI workflows read
+# it from there too), so there is only one place to bump the version.
+VERSION="$(sed -nE 's/^## \[([0-9]+\.[0-9]+\.[0-9]+)\].*/\1/p' "$SCRIPT_DIR/../CHANGELOG.md" | head -1)"
+if [ -z "$VERSION" ]; then
+  echo "Could not read version from CHANGELOG.md (expected a '## [x.y.z]' heading)." >&2
+  exit 1
+fi
 
 ENGINE=""
 GAME=""
@@ -166,6 +170,10 @@ while [ "$(find "$GAME_SRC" -mindepth 1 -maxdepth 1 | wc -l)" -eq 1 ]; do
 done
 
 [ -f "$GAME_SRC/halo.exe" ] || { echo "Game dir must contain halo.exe (got: $GAME_SRC)"; exit 1; }
+# Archives may store read-only or exotic permission bits. Make the
+# extracted game source writable so the Chimera overlay below cannot
+# fail with EPERM when it sets permissions or extended attributes.
+chmod -R u+w "$GAME_SRC" 2>/dev/null || true
 ok "Game source ready: $GAME_SRC (halo.exe present)"
 
 # Overlay Chimera if provided
@@ -214,7 +222,13 @@ PY
     CHIMERA_SRC="$CHIMERA"
   fi
   [ -d "$CHIMERA_SRC" ] || { echo "Chimera dir not found: $CHIMERA_SRC"; exit 1; }
-  cp -R "$CHIMERA_SRC/." "$GAME_SRC/"
+  # Strip extended attributes (quarantine/provenance, ...) from the
+  # downloaded release: cp would otherwise propagate them into the app
+  # bundle and can fail with "Permission denied" while doing so (seen on
+  # runs with a nearly full disk, where APFS xattr writes fail with EPERM).
+  xattr -cr "$CHIMERA_SRC" 2>/dev/null || true
+  chmod -R u+w "$CHIMERA_SRC" 2>/dev/null || true
+  cp -Rf "$CHIMERA_SRC/." "$GAME_SRC/"
   ok "Applied Chimera from $CHIMERA_SRC"
 fi
 
