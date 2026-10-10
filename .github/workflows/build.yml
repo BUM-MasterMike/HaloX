@@ -50,7 +50,7 @@ jobs:
           echo "Version: $VERSION"
 
       - name: Refuse to overwrite an existing release
-        if: inputs.publish == 'true'
+        if: inputs.publish == true
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
@@ -60,7 +60,7 @@ jobs:
           fi
 
       - name: Build release notes from CHANGELOG
-        if: inputs.publish == 'true'
+        if: inputs.publish == true
         run: |
           {
             echo "> See README.md for build instructions."
@@ -113,7 +113,7 @@ jobs:
           if-no-files-found: error
 
       - name: Create GitHub Release
-        if: inputs.publish == 'true'
+        if: inputs.publish == true
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
