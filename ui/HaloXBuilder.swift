@@ -683,6 +683,40 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         outField.placeholderString = "/Applications/HaloX.app"
         addRow("Output (.app)", outField, to: form)
 
+        section("Game", in: form)
+
+        gameField = NSTextField()
+        gameField.stringValue = repoRoot.appendingPathComponent("game").path
+        addRow("Game source", gameField, to: form)
+
+        // Button below the game source field: open a panel
+        // to pick a folder or a .zip file.
+        let gameChooseButton = NSButton(
+            title: "Choose folder or ZIP…",
+            target: self,
+            action: #selector(chooseGame)
+        )
+        gameChooseButton.toolTip = "Select a game folder or a .zip file"
+        // Same filled look as the "Build HaloX" button (borderless,
+        // rounded, buttonColor background) for a consistent style.
+        gameChooseButton.isBordered = false
+        gameChooseButton.wantsLayer = true
+        gameChooseButton.layer?.backgroundColor = buttonColor.cgColor
+        gameChooseButton.layer?.cornerRadius = 6
+        gameChooseButton.layer?.masksToBounds = true
+        gameChooseButton.attributedTitle = NSAttributedString(
+            string: "Choose folder or ZIP…",
+            attributes: [
+                .foregroundColor: NSColor.white,
+                .font: NSFont.systemFont(ofSize: 13, weight: .semibold)
+            ]
+        )
+        addRow("", gameChooseButton, to: form)
+
+        gameUrlField = NSTextField()
+        gameUrlField.placeholderString = "download a Halo zip first (overrides the game source)"
+        addRow("Game URL", gameUrlField, to: form)
+
         section("Engine & Runtime", in: form)
 
         enginePopup = NSPopUpButton()
@@ -710,26 +744,6 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         runtimeDirField = NSTextField()
         runtimeDirField.placeholderString = "local wrapper Contents dir (overrides the URL)"
         addRow("Runtime dir", runtimeDirField, to: form)
-
-        section("Game", in: form)
-
-        gameField = NSTextField()
-        gameField.stringValue = repoRoot.appendingPathComponent("game").path
-        addRow("Game source", gameField, to: form)
-
-        // Button below the game source field: open a panel
-        // to pick a folder or a .zip file.
-        let gameChooseButton = NSButton(
-            title: "Choose folder or ZIP…",
-            target: self,
-            action: #selector(chooseGame)
-        )
-        gameChooseButton.toolTip = "Select a game folder or a .zip file"
-        addRow("", gameChooseButton, to: form)
-
-        gameUrlField = NSTextField()
-        gameUrlField.placeholderString = "download a Halo zip first (overrides the game source)"
-        addRow("Game URL", gameUrlField, to: form)
 
         section("Components", in: form)
 
