@@ -45,6 +45,19 @@ The release ZIP (`HaloX-builder-vX.Y.Z.zip`) contains a ready-to-run
 (arm64 + x86_64), built fresh by CI on every release. Just download, unzip
 and double-click.
 
+> **macOS Gatekeeper:** the download is flagged as "from the internet", so
+> macOS may start the app from a temporary read-only copy (App Translocation)
+> and complain that it is in the wrong location. Clear the flag once, then
+> start it again (inside the unzipped `HaloX-X.Y.Z` folder):
+>
+> ```bash
+> xattr -cr HaloXBuilder.app
+> ```
+>
+> This is the same quarantine flag as for `HaloX.app` — see
+> [First run after download](#first-run-after-download); here the symptom is
+> different (wrong-location dialog instead of "corrupted").
+
 The GUI runs `scripts/build-local.sh` underneath, so all options below apply
 unchanged.
 

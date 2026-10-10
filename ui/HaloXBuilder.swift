@@ -213,7 +213,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         // the scripts/ folder, or it cannot find build-local.sh.
         let script = repoRoot.appendingPathComponent("scripts/build-local.sh")
         if !FileManager.default.fileExists(atPath: script.path) {
-            showMissingScriptDialog()
+            showWrongLocationDialog(startedFromTranslocation: isTranslocatedOrQuarantined)
         }
     }
 
@@ -1212,14 +1212,39 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     }
 
     /// Alert shown at launch when the app cannot find
-    /// scripts/build-local.sh because it was moved out of
-    /// the repository root.
-    private func showMissingScriptDialog() {
+    /// scripts/build-local.sh next to its bundle.
+    private func showWrongLocationDialog(startedFromTranslocation: Bool) {
         let alert = NSAlert()
-        alert.messageText = "Wrong location"
-        alert.informativeText = "HaloXBuilder.app must stay in the repository root, next to the scripts/ and assets/ folders, so it can find scripts/build-local.sh. Move it back there and run it from the repo root."
+        if startedFromTranslocation {
+            // The app is likely in the right place; macOS Gatekeeper ran it
+            // from a temporary read-only App Translocation snapshot instead.
+            alert.messageText = "macOS Gatekeeper started a read-only copy"
+            alert.informativeText = """
+            This app was flagged as "downloaded from the internet", so macOS ran it from a \
+            temporary read-only copy that has no scripts/ folder next to it - even though the \
+            real app is in the right place. Fix it once in Terminal:
+
+            xattr -dr com.apple.quarantine '/path/to/HaloXBuilder.app'
+
+            (use the real path of the app inside the unzipped HaloX-X.Y.Z folder). \
+            Then start HaloX Builder again.
+            """
+        } else {
+            alert.messageText = "Wrong location"
+            alert.informativeText = "HaloXBuilder.app must stay in the repository root, next to the scripts/ and assets/ folders, so it can find scripts/build-local.sh. Move it back there and run it from the repo root."
+        }
         alert.alertStyle = .critical
         alert.beginSheetModal(for: window) { _ in }
+    }
+
+    /// True when macOS is running the app from an App Translocation snapshot
+    /// (quarantined downloads) - the bundle path then points to a temporary
+    /// read-only copy without the scripts/ folder. Also true while the bundle
+    /// still carries the com.apple.quarantine xattr.
+    private var isTranslocatedOrQuarantined: Bool {
+        let bundlePath = Bundle.main.bundlePath
+        if bundlePath.contains("AppTranslocation") { return true }
+        return getxattr(bundlePath, "com.apple.quarantine", nil, 0, 0, 0) >= 0
     }
 
     func applicationShouldTerminateAfterLastWindowClosed(_ sender: NSApplication) -> Bool {
