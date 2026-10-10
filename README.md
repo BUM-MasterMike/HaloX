@@ -5,7 +5,7 @@
 <h1 align="center">HaloX</h1>
 
 <p align="center">
-  <strong>Halo: Combat Evolved, running on modern macOS – Intel and Apple Silicon.</strong>
+  <strong>Halo: Combat Evolved &amp; Custom Edition, running on modern macOS – Intel and Apple Silicon.</strong>
 </p>
 
 ---
