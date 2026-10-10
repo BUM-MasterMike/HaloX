@@ -1234,7 +1234,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             alert.informativeText = "HaloXBuilder.app must stay in the repository root, next to the scripts/ and assets/ folders, so it can find scripts/build-local.sh. Move it back there and run it from the repo root."
         }
         alert.alertStyle = .critical
-        alert.beginSheetModal(for: window) { _ in }
+        // Without scripts/build-local.sh the builder cannot work, so quit
+        // when the dialog is dismissed instead of leaving a broken window.
+        alert.beginSheetModal(for: window) { _ in
+            NSApp.terminate(nil)
+        }
     }
 
     /// True when macOS is running the app from an App Translocation snapshot
