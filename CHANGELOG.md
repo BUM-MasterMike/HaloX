@@ -34,7 +34,9 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
   (ubuntu-latest, x86_64), which builds the Linux wrapper with
   `scripts/build-wrapper-linux.sh` and uploads
   `HaloX-Linux-vX.Y.Z.tar.gz` as a run artifact; new `with_dxvk`
-  input (default on) controls the DXVK bundling.
+  input (default on) controls the DXVK bundling. The former
+  `platform: both` (macOS Intel + Apple Silicon) is now
+  `platform: all` and also builds the Linux wrapper.
 - README: the macOS and Linux build documentation now lives under one
   "Building the wrapper" chapter (`### macOS` / `### Linux`) with a
   shared "Build options" table — macOS stays the primary platform,

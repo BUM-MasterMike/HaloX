@@ -12,7 +12,7 @@ Guidance for AI coding agents (and humans) working in this repository.
 - `wrapper/HaloX-Launcher.sh` – macOS in-bundle launcher: sets `WINEPREFIX`, runs Wine (via Rosetta 2 on Apple Silicon), starts `halo.exe`
 - `wrapper/HaloX-Launcher-Linux.sh` – Linux launcher: sets `WINEPREFIX`, detects `halo.exe`/`haloce.exe`, picks the D3D renderer (DXVK with an automatic OpenGL fallback), starts the game
 - `ui/` – `HaloXBuilder.app` GUI: Swift/AppKit source (`HaloXBuilder.swift`), build script (`build.sh`, universal arm64 + x86_64 by default), app icon; the built app is never checked in
-- `.github/workflows/build-wrapper.yml` – manual-only CI: builds the app ZIPs (`platform: intel|silicon|both`, macOS) or the Linux wrapper tar.gz (`platform: linux`, ubuntu-latest) and uploads them as run artifacts. It **never** creates a GitHub Release.
+- `.github/workflows/build-wrapper.yml` – manual-only CI: builds the app ZIPs and the Linux wrapper tar.gz (`platform: all` = Intel + Apple Silicon + Linux; also `intel`/`silicon`/`linux` alone) and uploads them as run artifacts. It **never** creates a GitHub Release.
 - `.github/workflows/build.yml` – manual-only: builds a fresh universal (arm64 + x86_64) `HaloXBuilder.app` on a macOS runner and packages it with the **project** (source + build scripts) into a `HaloX-builder-vX.Y.Z.zip`. A "Publish release" checkbox on the manual run (checked by default) decides: checked → the ZIP is published as a GitHub Release; unchecked → the ZIP is only uploaded as a run artifact. It **never** publishes the built `HaloX.app` artifacts.
 - `CHANGELOG.md` – single source of truth for the changelog; only include sections that actually have entries (no TBD placeholders)
 - `assets/` – app icon (`AppIcon.icns`, bundled as `Contents/Resources/AppIcon.icns`), README logo (`shield.png`) and GUI screenshot (`halox-builder.webp`, shown in the README)
@@ -21,7 +21,7 @@ Guidance for AI coding agents (and humans) working in this repository.
 
 - All scripts, comments, and log messages must be **in English**.
 - CI trigger: `workflow_dispatch` only – no `push` trigger.
-- `build-wrapper.yml` builds and uploads the app ZIPs (macOS) or the Linux wrapper tar.gz (`platform: linux`) as run artifacts; it never creates a GitHub Release.
+- `build-wrapper.yml` builds and uploads the app ZIPs (macOS) and/or the Linux wrapper tar.gz (`platform: all|intel|silicon|linux`) as run artifacts; it never creates a GitHub Release.
 - `build.yml` publishes the **project** (source + build scripts + freshly built `HaloXBuilder.app`) – never of the built `HaloX.app` artifacts. Publishing is optional: the manual run has a "Publish release" checkbox (default on); unchecked it only uploads the ZIP as a run artifact.
 - Version is the topmost `CHANGELOG.md` section (e.g. `## [1.0.0]`); the workflows and `build-wrapper.sh` read it from there, so the CHANGELOG is the single source of truth.
 - Game binaries/assets (`halo.exe`, maps, etc.) are not redistributable – never commit them. CI expects them at `./game/` (provided privately).

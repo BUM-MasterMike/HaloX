@@ -5,21 +5,21 @@ on:
   workflow_dispatch:
     inputs:
       platform:
-        description: "Which platform(s) to build. 'both' = macOS Intel + Apple Silicon (default); 'linux' = Linux wrapper (ubuntu-latest, x86_64). Pick a single platform when the -vidmode settings differ per machine (e.g. Intel without vidmode, Silicon with a preset)."
+        description: "Which platform(s) to build. 'all' = Intel + Apple Silicon + Linux (default); 'intel'/'silicon' = a single macOS platform; 'linux' = the Linux wrapper (ubuntu-latest, x86_64). Pick a single platform when the -vidmode settings differ per machine (e.g. Intel without vidmode, Silicon with a preset)."
         required: false
-        default: "both"
+        default: "all"
         type: choice
         options:
-          - both
+          - all
           - intel
           - silicon
           - linux
       game_zip_url:
-        description: "Optional URL to a zip of the installed Halo folder; used instead of ./game"
+        description: "[macOS+Linux] Optional URL to a zip of the installed Halo folder; used instead of ./game"
         required: false
         default: ""
       engine:
-        description: "Wine engine to use. WineskinCX 23.7.1 (WS11) is the verified engine for Halo (Gcenx Wine 11 does not work); other WS11 WineskinCX versions can be tested."
+        description: "[macOS] Wine engine to use. WineskinCX 23.7.1 (WS11) is the verified engine for Halo (Gcenx Wine 11 does not work); other WS11 WineskinCX versions can be tested. Ignored for platform 'linux' (which always uses the latest Kron4ek wow64 engine)."
         required: false
         default: "wineskincx-23.7.1"
         type: choice
@@ -30,35 +30,35 @@ on:
           - wineskincx-22.1.1
           - wineskincx-21.2.0
       engine_url:
-        description: "Optional direct URL to a WineskinCX engine archive (same wswine.bundle layout); overrides the 'engine' choice. Leave empty to use the chosen engine."
+        description: "[macOS] Optional direct URL to a WineskinCX engine archive (same wswine.bundle layout); overrides the 'engine' choice. Leave empty to use the chosen engine."
         required: false
         default: ""
       with_chimera:
-        description: "Whether to include Chimera in the build"
+        description: "[macOS+Linux] Whether to include Chimera in the build"
         required: false
         default: "true"
       with_dsoal:
-        description: "Whether to include DSOAL (3D audio) in the build"
+        description: "[macOS+Linux] Whether to include DSOAL (3D audio) in the build"
         required: false
         default: "true"
       with_dxvk:
-        description: "Whether to include DXVK in the Linux build (Linux only; ignored on macOS)"
+        description: "[Linux] Whether to include DXVK in the build (ignored on macOS)"
         required: false
         default: "true"
       dsoal:
-        description: "DSOAL source: bundle (checked-in tested build, default), github (latest daily build), or URL/path to a DSOAL archive"
+        description: "[macOS+Linux] DSOAL source: bundle (checked-in tested build, default), github (latest daily build), or URL/path to a DSOAL archive"
         required: false
         default: "bundle"
       dsoal_hrtf:
-        description: "Force DSOAL binaural HRTF output (headphones)"
+        description: "[macOS+Linux] Force DSOAL binaural HRTF output (headphones)"
         required: false
         default: "false"
       moltenvk:
-        description: "MoltenVK version bundled for the optional vulkan per-run override (default 1.2.5; use 'none' to keep the engine's)"
+        description: "[macOS] MoltenVK version bundled for the optional vulkan per-run override (default 1.2.5; use 'none' to keep the engine's)"
         required: false
         default: "1.2.5"
       vidmode:
-        description: "Bundle a -vidmode value so the game starts at the current desktop resolution (wined3d skips the mode change). Needed on scaled 'Looks like' displays (e.g. MacBook Air) where Halo's first-run 640x480 mode change is refused (Direct3D error). 'none' = default build without -vidmode (Halo/Chimera handle the resolution). Preset aliases live in scripts/vidmode-presets.sh; 'custom' takes the vidmode_custom input."
+        description: "[macOS+Linux] Bundle a -vidmode value so the game starts at the current desktop resolution (wined3d skips the mode change). Needed on scaled 'Looks like' displays (e.g. MacBook Air) where Halo's first-run 640x480 mode change is refused (Direct3D error). 'none' = default build without -vidmode (Halo/Chimera handle the resolution). Preset aliases live in scripts/vidmode-presets.sh; 'custom' takes the vidmode_custom input."
         required: false
         default: "none"
         type: choice
@@ -76,7 +76,7 @@ on:
           - macbook-pro-16-max
           - custom
       vidmode_custom:
-        description: "Free-form W,H,R value (e.g. 1280,800,60) used when 'vidmode' is 'custom'. Leave empty for the default build."
+        description: "[macOS+Linux] Free-form W,H,R value (e.g. 1280,800,60) used when 'vidmode' is 'custom'. Leave empty for the default build."
         required: false
         default: ""
 
@@ -89,9 +89,10 @@ jobs:
       matrix:
         # 'matrix' is not available in jobs.<id>.if, so the platform filter
         # lives in the matrix itself: fromJSON + the 'platform' input.
-        # 'linux' builds the Linux wrapper (scripts/build-wrapper-linux.sh)
-        # on ubuntu-latest; the macOS rows build HaloX.app.
-        include: ${{ fromJSON(inputs.platform == 'linux' && '[{"os":"ubuntu-latest","arch":"x86_64","artifact":"HaloX-Linux"}]' || inputs.platform == 'both' && '[{"os":"macos-15-intel","arch":"x86_64","artifact":"HaloX-Intel"},{"os":"macos-latest","arch":"arm64","artifact":"HaloX-Silicon"}]' || inputs.platform == 'intel' && '[{"os":"macos-15-intel","arch":"x86_64","artifact":"HaloX-Intel"}]' || '[{"os":"macos-latest","arch":"arm64","artifact":"HaloX-Silicon"}]') }}
+        # 'all' builds Intel + Apple Silicon (.app) and Linux (wrapper dir);
+        # 'linux' builds only the Linux wrapper (scripts/build-wrapper-linux.sh)
+        # on ubuntu-latest; 'intel'/'silicon' build a single macOS .app.
+        include: ${{ fromJSON(inputs.platform == 'all' && '[{"os":"macos-15-intel","arch":"x86_64","artifact":"HaloX-Intel"},{"os":"macos-latest","arch":"arm64","artifact":"HaloX-Silicon"},{"os":"ubuntu-latest","arch":"x86_64","artifact":"HaloX-Linux"}]' || inputs.platform == 'linux' && '[{"os":"ubuntu-latest","arch":"x86_64","artifact":"HaloX-Linux"}]' || inputs.platform == 'intel' && '[{"os":"macos-15-intel","arch":"x86_64","artifact":"HaloX-Intel"}]' || '[{"os":"macos-latest","arch":"arm64","artifact":"HaloX-Silicon"}]') }}
 
     steps:
       - uses: actions/checkout@v4

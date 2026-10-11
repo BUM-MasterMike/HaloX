@@ -449,9 +449,9 @@ Sources:
 The workflow `.github/workflows/build-wrapper.yml` is **manually** triggered
 (Actions → *Build HaloX Wrapper* → *Run workflow*) and produces:
 
-- `HaloX-Intel-vX.Y.Z.zip` (macos-15-intel) – when `platform` is `intel` or `both`
-- `HaloX-Silicon-vX.Y.Z.zip` (macos-latest / Apple Silicon) – when `platform` is `silicon` or `both`
-- `HaloX-Linux-vX.Y.Z.tar.gz` (ubuntu-latest, x86_64) – when `platform` is `linux`
+- `HaloX-Intel-vX.Y.Z.zip` (macos-15-intel) – when `platform` is `intel` or `all`
+- `HaloX-Silicon-vX.Y.Z.zip` (macos-latest / Apple Silicon) – when `platform` is `silicon` or `all`
+- `HaloX-Linux-vX.Y.Z.tar.gz` (ubuntu-latest, x86_64) – when `platform` is `linux` or `all`
 
 No GitHub Release is created – the artifacts appear in the run's **Artifacts**.
 The version is taken from the topmost `CHANGELOG.md` section and shows up in the
@@ -465,19 +465,20 @@ Manual workflow inputs:
 - `dsoal` (`bundle`/`github`/URL, default `bundle`) – DSOAL source: `bundle` = the checked-in tested build (recommended), `github` = latest daily build, or a URL to a DSOAL archive
 - `dsoal_hrtf` (`true`/`false`, default `false`) – force binaural HRTF output for headphones?
 - `with_dxvk` (`true`/`false`, default `true`) – include DXVK in the **Linux** build? (macOS ignores it; its renderer is always wined3d `gl`)
-- `engine` (`wineskincx-23.7.1` default) – Wine engine to use. **WineskinCX 23.7.1 (WS11) is the verified engine for Halo**; Gcenx Wine 11 does not work (data-cache errors). Other WS11 WineskinCX versions can be selected for testing.
-- `engine_url` – optional direct URL to a WineskinCX engine archive (same `wswine.bundle` layout); overrides the `engine` choice
-- `platform` (`both` default) – which platform(s) to build: `intel`, `silicon`, `both` (macOS Intel + Apple Silicon), or `linux` (Linux wrapper, x86_64). Pick a single platform when the `-vidmode` settings differ per machine (e.g. Intel without vidmode, Silicon with a preset)
-- `moltenvk` (`1.2.5` default) – MoltenVK version bundled for the optional vulkan override (`none` keeps the engine's)
+- `engine` (`wineskincx-23.7.1` default, **macOS only**) – Wine engine to use. **WineskinCX 23.7.1 (WS11) is the verified engine for Halo**; Gcenx Wine 11 does not work (data-cache errors). Other WS11 WineskinCX versions can be selected for testing.
+- `engine_url` (**macOS only**) – optional direct URL to a WineskinCX engine archive (same `wswine.bundle` layout); overrides the `engine` choice
+- `platform` (`all` default) – which platform(s) to build: `all` (Intel + Apple Silicon + Linux), `intel`/`silicon` (a single macOS platform) or `linux` (the Linux wrapper, x86_64). Pick a single platform when the `-vidmode` settings differ per machine (e.g. Intel without vidmode, Silicon with a preset)
+- `moltenvk` (`1.2.5` default, **macOS only**) – MoltenVK version bundled for the optional vulkan override (`none` keeps the engine's)
 - `vidmode` (`none` default) – bundle a `-vidmode` value so the game starts at the current desktop resolution (wined3d skips the mode change); needed on scaled "Looks like" displays (e.g. MacBook Air) where Halo's first-run 640×480 mode change is refused. `none` = default build (Halo/Chimera handle the resolution); pick a preset alias (`macbook-air-13`, …) or `custom` + `vidmode_custom`
 - `vidmode_custom` – free-form `W,H,R` value (e.g. `1280,800,60`) used when `vidmode` is `custom`; leave empty for the default build
 
-For `platform: intel|silicon|both` the CI also downloads the matching
-Wineskin **wrapper runtime** (the `Contents/Frameworks` shared libraries
-the engine needs at runtime), so a CI build reproduces the verified local
-setup. For `platform: linux` it downloads the latest Kron4ek
-`*-amd64-wow64` engine instead (the macOS-only inputs `engine`,
-`engine_url`, `moltenvk` and `vidmode` are ignored there).
+For the macOS rows (`platform: all|intel|silicon`) the CI also downloads
+the matching Wineskin **wrapper runtime** (the `Contents/Frameworks`
+shared libraries the engine needs at runtime), so a CI build reproduces
+the verified local setup. For the Linux row (and `platform: linux`) it
+downloads the latest Kron4ek `*-amd64-wow64` engine instead. Only
+`engine`, `engine_url` and `moltenvk` are macOS-only and ignored there;
+`vidmode` applies to Linux as well.
 
 > **Renderer note:** on macOS HaloX always renders Direct3D through Wine's
 > OpenGL path (`gl`), exactly like the known-good reference wrapper — that
