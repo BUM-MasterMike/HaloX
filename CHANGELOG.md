@@ -41,6 +41,11 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
   "Building the wrapper" chapter (`### macOS` / `### Linux`) with a
   shared "Build options" table — macOS stays the primary platform,
   no information was lost.
+- **Robust downloads**: every `curl` download (game, Wine engine,
+  Wineskin runtime, Chimera, DSOAL, DXVK, MoltenVK and the
+  latest-release lookup) now retries transient network/DNS failures
+  (`--retry 5 --retry-delay 5 --retry-all-errors`), so a flaky
+  GitHub runner no longer aborts the build.
 
 ## [1.3.0]
 

@@ -265,7 +265,7 @@ if [ -n "$GAME_URL" ]; then
   GAME_ZIP_DIR="$(mktemp -d -t halox-game.XXXXXX)"
   GAME_ZIP="$GAME_ZIP_DIR/halo.zip"
   info "Downloading game zip: $GAME_URL"
-  curl -L --fail -o "$GAME_ZIP" "$GAME_URL"
+  curl -L --fail --retry 5 --retry-delay 5 --retry-all-errors -o "$GAME_ZIP" "$GAME_URL"
   GAME="$GAME_ZIP"
 fi
 [ -f "$GAME" ] || [ -d "$GAME" ] || { fail "Game source not found: $GAME (use --game, --game-url, or a trailing URL)"; exit 1; }
@@ -304,7 +304,7 @@ else
     ARCHIVE_PATH="$ENGINE_CACHE/$ENGINE_ARCHIVE"
     if [ ! -f "$ARCHIVE_PATH" ]; then
       info "Downloading Wine engine: $ENGINE_URL"
-      curl -L --fail -o "$ARCHIVE_PATH" "$ENGINE_URL"
+      curl -L --fail --retry 5 --retry-delay 5 --retry-all-errors -o "$ARCHIVE_PATH" "$ENGINE_URL"
     else
       info "Engine archive cached: $ARCHIVE_PATH"
     fi

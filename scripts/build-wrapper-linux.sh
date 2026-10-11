@@ -146,7 +146,7 @@ if [ -n "$GAME_ZIP_URL" ]; then
     GAME_DOWNLOAD_DIR="$(mktemp -d -t game.XXXXXX)"
     GAME_DOWNLOAD_ZIP="$GAME_DOWNLOAD_DIR/Halo.zip"
     info "Downloading game zip: $GAME_ZIP_URL"
-    curl -L --fail -o "$GAME_DOWNLOAD_ZIP" "$GAME_ZIP_URL"
+    curl -L --fail --retry 5 --retry-delay 5 --retry-all-errors -o "$GAME_DOWNLOAD_ZIP" "$GAME_ZIP_URL"
     GAME="$GAME_DOWNLOAD_ZIP"
   fi
 fi
@@ -245,7 +245,7 @@ if [ -n "$CHIMERA" ]; then
     CHIMERA_DIR="$(mktemp -d -t chimera.XXXXXX)"
     CHIMERA_ZIP="$CHIMERA_DIR/chimera$CHIMERA_EXT"
     info "Chimera: downloading $CHIMERA_URL"
-    curl -L -o "$CHIMERA_ZIP" "$CHIMERA_URL"
+    curl -L --retry 5 --retry-delay 5 --retry-all-errors -o "$CHIMERA_ZIP" "$CHIMERA_URL"
     CHIMERA_EXTRACT_DIR="$(mktemp -d)"
     extract_archive "$CHIMERA_ZIP" "$CHIMERA_EXTRACT_DIR"
     CHIMERA_SRC="$CHIMERA_EXTRACT_DIR"
@@ -308,7 +308,7 @@ if [ -n "$DSOAL" ]; then
   elif [ "$DSOAL" = "github" ]; then
     DSOAL_ARCHIVE="$(mktemp -t dsoal.XXXXXX.zip)"
     info "Downloading DSOAL (github latest-master) ..."
-    curl -L --fail -o "$DSOAL_ARCHIVE" \
+    curl -L --fail --retry 5 --retry-delay 5 --retry-all-errors -o "$DSOAL_ARCHIVE" \
       "https://github.com/kcat/dsoal/releases/download/latest-master/DSOAL.zip"
     DSOAL_EXTRACT_DIR="$(mktemp -d)"
     extract_archive "$DSOAL_ARCHIVE" "$DSOAL_EXTRACT_DIR"
@@ -365,7 +365,7 @@ if [ -n "$DXVK" ] && [ "$DXVK" != "off" ]; then
     DXVK_TMP_DIR="$(mktemp -d -t dxvk.XXXXXX)"
     DXVK_ARCHIVE="$DXVK_TMP_DIR/dxvk.tar.gz"
     info "DXVK: downloading $DXVK_URL"
-    curl -L --fail -o "$DXVK_ARCHIVE" "$DXVK_URL"
+    curl -L --fail --retry 5 --retry-delay 5 --retry-all-errors -o "$DXVK_ARCHIVE" "$DXVK_URL"
     DXVK_EXTRACT_DIR="$(mktemp -d)"
     tar -xzf "$DXVK_ARCHIVE" -C "$DXVK_EXTRACT_DIR"
     DXVK_SRC="$(find "$DXVK_EXTRACT_DIR" -maxdepth 1 -type d -name 'dxvk-*' | head -1)"

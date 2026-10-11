@@ -47,7 +47,7 @@ fi
 
 # Note: the API can serve both compact (single line) and pretty-printed
 # JSON; the awk scanner below handles both.
-json="$(curl -fsSL "${headers[@]}" "https://api.github.com/repos/$repo/releases/latest")"
+json="$(curl -fsSL --retry 5 --retry-delay 5 --retry-all-errors "${headers[@]}" "https://api.github.com/repos/$repo/releases/latest")"
 
 # Release tag, e.g. "v1.2.3" (a leading "v" is stripped below).
 # The JSON is split on '"'; the key "tag_name" is followed by a ":" field

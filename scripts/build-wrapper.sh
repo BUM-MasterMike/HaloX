@@ -145,7 +145,7 @@ if [ -n "$GAME_ZIP_URL" ]; then
     GAME_DOWNLOAD_DIR="$(mktemp -d -t game.XXXXXX)"
     GAME_DOWNLOAD_ZIP="$GAME_DOWNLOAD_DIR/Halo.zip"
     info "Downloading game zip: $GAME_ZIP_URL"
-    curl -L --fail -o "$GAME_DOWNLOAD_ZIP" "$GAME_ZIP_URL"
+    curl -L --fail --retry 5 --retry-delay 5 --retry-all-errors -o "$GAME_DOWNLOAD_ZIP" "$GAME_ZIP_URL"
     GAME="$GAME_DOWNLOAD_ZIP"
   fi
 fi
@@ -203,7 +203,7 @@ if [ -n "$CHIMERA" ]; then
     CHIMERA_URL="$("$SCRIPT_DIR/github-latest-asset.sh" SnowyMouse/chimera '\.(zip|7z)$')"
     [ -n "$CHIMERA_URL" ] || { echo "Could not find Chimera zip release"; exit 1; }
     info "Chimera: downloading $CHIMERA_URL"
-    curl -L -o "$CHIMERA_ZIP" "$CHIMERA_URL"
+    curl -L --retry 5 --retry-delay 5 --retry-all-errors -o "$CHIMERA_ZIP" "$CHIMERA_URL"
     CHIMERA_EXTRACT_DIR="$(mktemp -d)"
     bsdtar -xf "$CHIMERA_ZIP" -C "$CHIMERA_EXTRACT_DIR"
     CHIMERA_SRC="$CHIMERA_EXTRACT_DIR"
@@ -263,7 +263,7 @@ if [ -n "$DSOAL" ]; then
   elif [ "$DSOAL" = "github" ]; then
     DSOAL_ARCHIVE="$(mktemp -t dsoal.XXXXXX.zip)"
     info "Downloading DSOAL (github latest-master) ..."
-    curl -L --fail -o "$DSOAL_ARCHIVE" \
+    curl -L --fail --retry 5 --retry-delay 5 --retry-all-errors -o "$DSOAL_ARCHIVE" \
       "https://github.com/kcat/dsoal/releases/download/latest-master/DSOAL.zip"
     DSOAL_EXTRACT_DIR="$(mktemp -d)"
     bsdtar -xf "$DSOAL_ARCHIVE" -C "$DSOAL_EXTRACT_DIR"
@@ -378,7 +378,7 @@ if [ "$MOLTENVK" != "none" ] && [ -f "$MVK_DEST" ]; then
   if [ ! -f "$MVK_SRC" ]; then
     MVK_TAR="$(mktemp -t moltenvk.XXXXXX.tar)"
     info "Downloading MoltenVK $MOLTENVK..."
-    curl -L --fail -o "$MVK_TAR" \
+    curl -L --fail --retry 5 --retry-delay 5 --retry-all-errors -o "$MVK_TAR" \
       "https://github.com/KhronosGroup/MoltenVK/releases/download/v$MOLTENVK/MoltenVK-macos.tar"
     MVK_DIR="$(mktemp -d)"
     tar -xf "$MVK_TAR" -C "$MVK_DIR" "MoltenVK/MoltenVK/dylib/macOS/libMoltenVK.dylib"

@@ -115,7 +115,7 @@ jobs:
         run: |
           if [ -n "${{ inputs.game_zip_url }}" ]; then
             echo "Downloading game zip..."
-            curl -L --fail -o Halo.zip "${{ inputs.game_zip_url }}"
+            curl -L --fail --retry 5 --retry-delay 5 --retry-all-errors -o Halo.zip "${{ inputs.game_zip_url }}"
             echo "Downloaded Halo.zip"
             if [ ! -f Halo.zip ]; then
               echo "::error::Failed to download game zip"
@@ -157,7 +157,7 @@ jobs:
             ENGINE_URL="https://github.com/vitor251093/porting-kit-engines/releases/download/wineskin/${ENGINE_ARCHIVE}"
           fi
           echo "Downloading engine: $ENGINE_URL"
-          curl -L --fail -o "$RUNNER_TEMP/engine/engine.tar.7z" "$ENGINE_URL"
+          curl -L --fail --retry 5 --retry-delay 5 --retry-all-errors -o "$RUNNER_TEMP/engine/engine.tar.7z" "$ENGINE_URL"
           tar -xJf "$RUNNER_TEMP/engine/engine.tar.7z" -C "$RUNNER_TEMP/engine"
 
           # Locate the engine dir (wswine.bundle -> contains bin/ lib/ share/)
@@ -170,7 +170,7 @@ jobs:
           # ICU, glib, ...). GStreamer.framework is excluded in build-wrapper.sh.
           RUNTIME_URL="https://github.com/The-Wineskin-Project/Wrapper/releases/download/v1.0/Wineskin-3.0.6_1.tar.7z"
           echo "Downloading Wineskin runtime: $RUNTIME_URL"
-          curl -L --fail -o "$RUNNER_TEMP/runtime/runtime.tar.7z" "$RUNTIME_URL"
+          curl -L --fail --retry 5 --retry-delay 5 --retry-all-errors -o "$RUNNER_TEMP/runtime/runtime.tar.7z" "$RUNTIME_URL"
           tar -xJf "$RUNNER_TEMP/runtime/runtime.tar.7z" -C "$RUNNER_TEMP/runtime"
 
           # Locate the wrapper Contents dir (contains Frameworks/)
@@ -197,7 +197,7 @@ jobs:
           mkdir -p "$RUNNER_TEMP/engine"
           ENGINE_URL="$(./scripts/github-latest-asset.sh Kron4ek/Wine-Builds '^wine-%s-amd64-wow64\.tar\.xz$')"
           echo "Downloading engine: $ENGINE_URL"
-          curl -L --fail -o "$RUNNER_TEMP/engine/engine.tar.xz" "$ENGINE_URL"
+          curl -L --fail --retry 5 --retry-delay 5 --retry-all-errors -o "$RUNNER_TEMP/engine/engine.tar.xz" "$ENGINE_URL"
           tar -xJf "$RUNNER_TEMP/engine/engine.tar.xz" -C "$RUNNER_TEMP/engine"
 
           # Locate the engine dir containing bin/ (wine / wine64).
