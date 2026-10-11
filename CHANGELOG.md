@@ -46,6 +46,13 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
   latest-release lookup) now retries transient network/DNS failures
   (`--retry 5 --retry-delay 5 --retry-all-errors`), so a flaky
   GitHub runner no longer aborts the build.
+- **MoltenVK caching (local)**: `scripts/build-local.sh` now resolves
+  MoltenVK once into the download cache
+  (`~/Library/Caches/HaloX/moltenvk/<version>/libMoltenVK.dylib`) and
+  hands the dylib path to `build-wrapper.sh`, so local rebuilds no
+  longer re-download the ~46 MB `MoltenVK-macos.tar`; a user-supplied
+  path or `--moltenvk none` is passed through unchanged and
+  `--clear-cache` removes it too.
 
 ## [1.3.0]
 

@@ -6,10 +6,11 @@
 # Copyright (c) 2026 BUM MasterMike. Licensed under the MIT License.
 # See the LICENSE file for details.
 #
-# It downloads and caches the same two ingredients the workflow fetches:
+# It downloads and caches the same ingredients the workflow fetches:
 #   1. the WineskinCX engine (default: WS11WineCX64Bit23.7.1 – the version
 #      verified to run Halo; Gcenx Wine 11 does not work)
 #   2. the Wineskin wrapper runtime (Contents/Frameworks shared libraries)
+#   3. the MoltenVK dylib for the vulkan override (default: 1.2.5)
 # and then calls build-wrapper.sh with the workflow's default options
 # (Chimera on, DSOAL = bundle, MoltenVK 1.2.5).
 #
@@ -33,7 +34,9 @@
 #   --dsoal <bundle|github|zip|dir>   DSOAL source (default: bundle)
 #   --dsoal-hrtf          Force DSOAL binaural HRTF output
 #   --no-dsoal            Skip DSOAL entirely
-#   --moltenvk <v|path|none>  MoltenVK for the vulkan override (default: 1.2.5)
+#   --moltenvk <v|path|none>  MoltenVK for the vulkan override (default: 1.2.5;
+#                             a version is downloaded once and cached, a path
+#                             is used as-is, 'none' disables the override)
 #
 #   --vidmode <alias|W,H,R>
 #       Bundle a -vidmode value: a preset alias from scripts/vidmode-presets.sh
@@ -44,7 +47,7 @@
 #   --arch <arch>         x86_64 or arm64 (default: host arch)
 #   --out <path>          Output .app (default: dist/HaloX.app)
 #   --cache-dir <dir>     Download cache (default: ~/Library/Caches/HaloX)
-#   --clear-cache         Remove the cached engine + runtime downloads. Standalone
+#   --clear-cache         Remove the cached engine + runtime + MoltenVK downloads. Standalone
 #                         run = cache cleanup only (no build); combined with a game
 #                         source (--game / --game-url / URL) it clears the cache
 #                         and then proceeds with the build.
@@ -139,7 +142,7 @@ done
 if [ "$CLEAR_CACHE" = 1 ]; then
   section "Clear cache"
   REMOVED=0
-  for SUB in engine runtime; do
+  for SUB in engine runtime moltenvk; do
     if [ -d "$CACHE_DIR/$SUB" ]; then
       info "Removing $CACHE_DIR/$SUB"
       rm -rf "$CACHE_DIR/$SUB"
@@ -352,6 +355,35 @@ else
   [ -d "$RUNTIME_DIR/Frameworks" ] || { fail "No Frameworks/ in $RUNTIME_DIR"; exit 1; }
 fi
 ok "Runtime frameworks: $RUNTIME_DIR/Frameworks"
+
+# --- Resolve MoltenVK (cache the extracted dylib) ------------------------
+# build-wrapper.sh accepts a version (downloads the ~46 MB MoltenVK-macos.tar
+# and extracts a single dylib) or a path. To avoid re-downloading the tarball
+# on every local rebuild, resolve it here once and hand over the cached dylib
+# path. 'none' and a user-supplied path are passed through unchanged.
+section "MoltenVK"
+if [ "$MOLTENVK" = "none" ] || [ -f "$MOLTENVK" ]; then
+  ok "MoltenVK: $MOLTENVK"
+else
+  MVK_DYLIB="$CACHE_DIR/moltenvk/$MOLTENVK/libMoltenVK.dylib"
+  if [ -f "$MVK_DYLIB" ]; then
+    info "MoltenVK cache hit: $MVK_DYLIB"
+  else
+    mkdir -p "$(dirname "$MVK_DYLIB")"
+    MVK_TAR="$(mktemp -t moltenvk.XXXXXX.tar)"
+    MVK_EXTRACT="$(mktemp -d)"
+    info "Downloading MoltenVK $MOLTENVK..."
+    curl -L --fail --retry 5 --retry-delay 5 --retry-all-errors -o "$MVK_TAR" \
+      "https://github.com/KhronosGroup/MoltenVK/releases/download/v$MOLTENVK/MoltenVK-macos.tar"
+    # Only the macOS dylib is needed; keep just that one in the cache.
+    tar -xf "$MVK_TAR" -C "$MVK_EXTRACT" \
+      "MoltenVK/MoltenVK/dylib/macOS/libMoltenVK.dylib"
+    cp "$MVK_EXTRACT/MoltenVK/MoltenVK/dylib/macOS/libMoltenVK.dylib" "$MVK_DYLIB"
+    rm -rf "$MVK_TAR" "$MVK_EXTRACT"
+  fi
+  MOLTENVK="$MVK_DYLIB"
+  ok "MoltenVK dylib: $MOLTENVK"
+fi
 
 # --- Assemble the build-wrapper.sh arguments -----------------------------
 BUILD_ARGS=()

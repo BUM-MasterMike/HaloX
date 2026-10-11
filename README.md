@@ -102,7 +102,7 @@ and the same game data; the platform-specific differences are listed in
 - `curl`, plus an archive tool — macOS ships `unzip` and `bsdtar`, which
   cover the `.zip` game archives and the `.7z` Chimera releases
 - The first build downloads the WineskinCX engine + Wineskin wrapper
-  runtime (~1–2 GB, cached in `~/Library/Caches/HaloX`)
+  runtime (+ the MoltenVK dylib) (~1–2 GB, cached in `~/Library/Caches/HaloX`)
 - A downloaded CI artifact needs its quarantine flag cleared — see
   [First run after download](#first-run-after-download)
 
@@ -295,7 +295,7 @@ platform-specific options differ:
 |---|---|---|
 | `--engine` | WineskinCX, by name (`wineskincx-23.7.1`, …) | Kron4ek wow64: `latest` or a version (`11.19`) |
 | `--runtime-url` / `--runtime-dir` | Wineskin wrapper runtime | — (Linux Wine is self-contained) |
-| `--moltenvk` | MoltenVK for the optional Vulkan renderer | — (Linux uses the system's Vulkan) |
+| `--moltenvk` | MoltenVK for the optional Vulkan renderer (downloaded once, cached) | — (Linux uses the system's Vulkan) |
 | `--dxvk` / `--no-dxvk` | — | DXVK (on by default; `--no-dxvk` = Wine OpenGL) |
 | `--arch` | `x86_64` or `arm64` | `x86_64` only |
 | `--out` | `dist/HaloX.app` | `dist/HaloX` |
