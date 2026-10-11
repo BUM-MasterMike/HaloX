@@ -761,8 +761,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         dsoalHrtfCheck = addCheckbox("DSOAL HRTF", tooltip: "DSOAL binaural HRTF (headphones)", to: form)
 
         moltenvkField = NSTextField()
-        moltenvkField.stringValue = "1.2.5"
+        moltenvkField.stringValue = "none"
         moltenvkField.placeholderString = "version, path or 'none'"
+        moltenvkField.toolTip = "Optional and experimental. MoltenVK is only needed for the HALOX_D3D_RENDERER=vulkan test override; the normal macOS build uses Wine's OpenGL ('gl') and needs no MoltenVK. Leave 'none' unless you want to bundle it."
         addRow("MoltenVK", moltenvkField, to: form)
 
         // Fixed presets from scripts/vidmode-presets.sh, plus a custom
@@ -1162,7 +1163,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         } else {
             args += ["--no-dsoal"]
         }
-        args += ["--moltenvk", trimmed(moltenvkField.stringValue) ?? "1.2.5"]
+        args += ["--moltenvk", trimmed(moltenvkField.stringValue) ?? "none"]
         if let value = vidmodeValue {
             args += ["--vidmode", value]
         }

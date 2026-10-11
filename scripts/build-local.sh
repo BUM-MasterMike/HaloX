@@ -10,9 +10,10 @@
 #   1. the WineskinCX engine (default: WS11WineCX64Bit23.7.1 – the version
 #      verified to run Halo; Gcenx Wine 11 does not work)
 #   2. the Wineskin wrapper runtime (Contents/Frameworks shared libraries)
-#   3. the MoltenVK dylib for the vulkan override (default: 1.2.5)
 # and then calls build-wrapper.sh with the workflow's default options
-# (Chimera on, DSOAL = bundle, MoltenVK 1.2.5).
+# (Chimera on, DSOAL = bundle, MoltenVK off). MoltenVK is optional and only
+# needed for the experimental vulkan override (see --moltenvk below); it is
+# not downloaded by default.
 #
 # Downloads are cached in ~/Library/Caches/HaloX so rebuilds are offline.
 #
@@ -34,9 +35,10 @@
 #   --dsoal <bundle|github|zip|dir>   DSOAL source (default: bundle)
 #   --dsoal-hrtf          Force DSOAL binaural HRTF output
 #   --no-dsoal            Skip DSOAL entirely
-#   --moltenvk <v|path|none>  MoltenVK for the vulkan override (default: 1.2.5;
-#                             a version is downloaded once and cached, a path
-#                             is used as-is, 'none' disables the override)
+#   --moltenvk <v|path|none>  MoltenVK for the EXPERIMENTAL vulkan override
+#                             (default: none – not needed for the normal
+#                             OpenGL 'gl' renderer; a version is downloaded
+#                             once and cached, a path is used as-is)
 #
 #   --vidmode <alias|W,H,R>
 #       Bundle a -vidmode value: a preset alias from scripts/vidmode-presets.sh
@@ -79,7 +81,7 @@ WITH_CHIMERA=1
 WITH_DSOAL=1
 DSOAL="bundle"
 DSOAL_HRTF=""
-MOLTENVK="1.2.5"
+MOLTENVK="none"
 ARCH="$(uname -m)"
 OUT="dist/HaloX.app"
 CACHE_DIR="${HALOX_CACHE_DIR:-"$HOME/Library/Caches/HaloX"}"

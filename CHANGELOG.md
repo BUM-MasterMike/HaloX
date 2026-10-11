@@ -4,6 +4,24 @@ All notable changes to HaloX are documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [1.5.0]
+
+### Changed
+- **MoltenVK is now off by default everywhere**: MoltenVK is optional
+  and only needed for the experimental `HALOX_D3D_RENDERER=vulkan`
+  override (macOS runs on wined3d `gl`), so `HaloXBuilder.app` now
+  prefills the MoltenVK field with `none` (marked as experimental) and
+  the README and script docs no longer claim `1.2.5` as the default —
+  the local scripts (`build-local.sh`, `build-wrapper.sh`) and the CI
+  workflow now default to `none` too. The README troubleshooting
+  section also briefly explains what "experimental" means here (it
+  needs a Metal-capable Mac and is far less tested than the OpenGL
+  `gl` path).
+- **Linux: no wine-mono/gecko prompt**: the Linux launcher now sets
+  `WINEDLLOVERRIDES="mscoree,mshtml=;…"`, so the first start no longer
+  shows Wine's mono/gecko install dialog — Halo is pure C++ and needs
+  neither. The README "First run" note was updated accordingly.
+
 ## [1.4.0]
 
 ### Added

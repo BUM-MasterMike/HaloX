@@ -30,8 +30,11 @@
 #   as a per-run override: HALOX_D3D_RENDERER=vulkan.
 #
 #   --moltenvk 1.2.5|/path/to/libMoltenVK.dylib|none
-#       MoltenVK (Vulkan -> Metal) bundled with the engine for the vulkan
-#       override (default 1.2.5; newer ones crash on old GPUs).
+#       MoltenVK (Vulkan -> Metal) bundled with the engine for the
+#       EXPERIMENTAL vulkan override. Optional and OFF by default (none):
+#       it is not needed for the normal wined3d OpenGL ("gl") renderer.
+#       If set, use a known-good version such as 1.2.5 (newer ones crash
+#       on old GPUs).
 #
 #   --wineskin-runtime <Contents-dir-of-wrapper>
 #       Wineskin wrapper runtime (a dir containing Frameworks/). WineskinCX
@@ -78,7 +81,7 @@ OUT=""
 CHIMERA=""
 DSOAL=""
 DSOAL_HRTF=""
-MOLTENVK="1.2.5"
+MOLTENVK="none"
 WINESKIN_RUNTIME=""
 VIDMODE=""
 

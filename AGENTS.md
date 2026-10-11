@@ -34,7 +34,7 @@ Guidance for AI coding agents (and humans) working in this repository.
 
 The recommended way is `scripts/build-local.sh` – it uses the same defaults as
 the CI workflow (WineskinCX 23.7.1 engine, Wineskin wrapper runtime, Chimera on,
-DSOAL bundle, MoltenVK 1.2.5) and caches downloads in `~/Library/Caches/HaloX`:
+DSOAL bundle, MoltenVK **off**) and caches downloads in `~/Library/Caches/HaloX`:
 
 ```bash
 ./scripts/build-local.sh                # game data in ./game

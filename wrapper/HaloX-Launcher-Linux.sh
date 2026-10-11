@@ -50,7 +50,9 @@ export LD_LIBRARY_PATH="$WINE_DIR/lib${WINE_DIR/lib64:+:$WINE_DIR/lib64}${LD_LIB
 # gstreamer: a bug in winegstreamer can hang prefix
 # creation/updating. Disable it (Halo runs with -novideo and needs
 # no host media plugins anyway).
-export WINEDLLOVERRIDES="winegstreamer=${WINEDLLOVERRIDES:+:$WINEDLLOVERRIDES}"
+# Also disable mscoree/mshtml to suppress the wine-mono/gecko install
+# prompt (Halo is pure C++, no .NET required).
+export WINEDLLOVERRIDES="mscoree,mshtml=;winegstreamer=${WINEDLLOVERRIDES:+:$WINEDLLOVERRIDES}"
 export GST_PLUGIN_SYSTEM_PATH=""
 export GST_PLUGIN_PATH=""
 

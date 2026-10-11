@@ -22,10 +22,9 @@ terminal is needed for local builds. On Linux it produces a runnable wrapper dir
 
 ## Features
 
-- 📦 One-command assembly of a runnable `HaloX.app` (`scripts/build-wrapper.sh`)
-- 🐧 Linux wrapper (plain directory, CLI only): `scripts/build-wrapper-linux.sh`
-- 🖥️ Runs on **Intel** (native) and **Apple Silicon** (via Rosetta 2)
 - 🧰 Native GUI builder (`HaloXBuilder.app`, universal, ready to run in the release) — **macOS only**
+- 📦 One-command assembly of a runnable wrapper: `HaloX.app` (macOS, `scripts/build-local.sh`) and Linux wrapper directory (Linux, `scripts/build-local-linux.sh`, CLI only)
+- 🖥️ Runs on **macOS** (Intel native, Apple Silicon via Rosetta 2) and **Linux** (x86_64)
 - 🔁 Manual, versioned CI builds via GitHub Actions (artifacts, no release)
 
 ## HaloX Builder (GUI)
@@ -102,7 +101,7 @@ and the same game data; the platform-specific differences are listed in
 - `curl`, plus an archive tool — macOS ships `unzip` and `bsdtar`, which
   cover the `.zip` game archives and the `.7z` Chimera releases
 - The first build downloads the WineskinCX engine + Wineskin wrapper
-  runtime (+ the MoltenVK dylib) (~1–2 GB, cached in `~/Library/Caches/HaloX`)
+  runtime (~1–2 GB, cached in `~/Library/Caches/HaloX`)
 - A downloaded CI artifact needs its quarantine flag cleared — see
   [First run after download](#first-run-after-download)
 
@@ -121,7 +120,8 @@ cd HaloX
 **2. Build.** `scripts/build-local.sh` drives `build-wrapper.sh` with exactly
 the same defaults as the CI workflow: WineskinCX 23.7.1 engine (downloaded on
 first use and cached in `~/Library/Caches/HaloX`), the Wineskin wrapper runtime,
-Chimera **on**, DSOAL `bundle`, MoltenVK 1.2.5. The first run downloads the
+Chimera **on**, DSOAL `bundle`. MoltenVK stays **off**: it is optional and only
+needed for the experimental Vulkan override. The first run downloads the
 engine + runtime (~1–2 GB total); later runs work fully offline.
 
 ```bash
@@ -179,7 +179,7 @@ download) — [example build output](#appendix-example-build-output).
 | `--chimera` | `github` to download the latest Chimera release, or a local zip/dir |
 | `--dsoal`   | `bundle` (default) = checked-in tested build (DSOAL `d9fed51a` + OpenAL Soft 1.23.1); `github` = latest daily build (not recommended); or a local zip/dir |
 | `--dsoal-hrtf` | Force DSOAL binaural HRTF output for headphones |
-| `--moltenvk` | MoltenVK version bundled for the optional vulkan override (default `1.2.5`; use `none` to keep the engine's) |
+| `--moltenvk` | MoltenVK version bundled for the **experimental** Vulkan override. Optional and **off by default** (`none`): the normal macOS build uses Wine's OpenGL `gl` and needs no MoltenVK. Set a version (e.g. `1.2.5`) or a dylib path only if you want to bundle it; `none` keeps the engine's |
 | `--vidmode`  | Bundle a `-vidmode` value (`W,H,R` or a preset alias) so the game starts at the current desktop resolution and wined3d skips the mode change. Needed on scaled "Looks like" displays (e.g. MacBook Air) that refuse Halo's first-run 640×480 mode change. Default: off. Aliases live in `scripts/vidmode-presets.sh` |
 | `--out`     | Output `.app` bundle |
 
@@ -235,12 +235,9 @@ Start the game with the launcher in the wrapper directory:
 ./dist/HaloX/HaloX
 ```
 
-On the **first** start Wine initializes its prefix and may
-ask to install **wine-mono** (Wine's .NET compatibility
-layer). Choose **Install** in the dialog: Wine downloads and
-installs wine-mono into the prefix and then **exits without
-starting Halo**. Run HaloX a second time — the game then
-starts normally.
+On the **first** start Wine initializes its prefix (this happens
+automatically). Mono/gecko are disabled, so no mono install prompt
+appears; Halo starts right away.
 
 #### Renderer (DXVK)
 
@@ -295,7 +292,7 @@ platform-specific options differ:
 |---|---|---|
 | `--engine` | WineskinCX, by name (`wineskincx-23.7.1`, …) | Kron4ek wow64: `latest` or a version (`11.19`) |
 | `--runtime-url` / `--runtime-dir` | Wineskin wrapper runtime | — (Linux Wine is self-contained) |
-| `--moltenvk` | MoltenVK for the optional Vulkan renderer (downloaded once, cached) | — (Linux uses the system's Vulkan) |
+| `--moltenvk` | MoltenVK for the **experimental** Vulkan override (off by default; downloaded once, cached) | — (Linux uses the system's Vulkan) |
 | `--dxvk` / `--no-dxvk` | — | DXVK (on by default; `--no-dxvk` = Wine OpenGL) |
 | `--arch` | `x86_64` or `arm64` | `x86_64` only |
 | `--out` | `dist/HaloX.app` | `dist/HaloX` |
@@ -338,7 +335,7 @@ contains at minimum:
 | `halo.exe` or `haloce.exe` | The game executable — `halo.exe` (Combat Evolved) or `haloce.exe` (Custom Edition). The build fails if neither is present. |
 | `bitmaps.map`, `sounds.map` | Shared map data. In the reference GOG-style layout these live inside a `MAPS/` subfolder; a classic layout keeps them next to `halo.exe`. Both work – the engine resolves the folder case-insensitively. |
 | level maps | At least one playable level map (e.g. `bloodgulch.map`). |
-| the rest of the installed folder | Engine DLLs (`binkw32.dll`, `msvcr71.dll`, …), videos, readme. Simplest: include the **whole** installed game folder. |
+| the rest of the installed folder | Engine DLLs (`binkw32.dll`, `msvcr71.dll`, …), videos, readme. **Simplest: include the whole installed game folder as-is** (this is the "installed" copy you get after running the official Halo installer on Windows and applying the official 1.00.10 patch). No need to run installers via Wine/Winetricks — just copy that installed folder. |
 
 The installation must already include the official patch **1.00.10.xxxx** — Chimera
 does not work without it (see [Supported game editions](#supported-game-editions)).
@@ -394,6 +391,13 @@ forced the Vulkan renderer; run once without the override:
 ```bash
 HALOX_D3D_RENDERER=gl /Applications/HaloX.app/Contents/MacOS/HaloX
 ```
+
+> **What "experimental" means here.** On macOS the `vulkan` override routes
+> Halo's Direct3D through wined3d's Vulkan backend into **MoltenVK**
+> (Vulkan → Metal). It only works on **Metal-capable Macs** (Apple Silicon,
+> or an Intel/AMD/NVIDIA GPU from ~2012 onward) and is far less tested than
+> the OpenGL `gl` path, so it can still fail on some systems. It is a test
+> option, not a supported way to play — regular play should stay on `gl`.
 
 **Ping to online servers fluctuates, or the connection hiccups for a moment every ~0.5 s?**
 
@@ -468,7 +472,7 @@ Manual workflow inputs:
 - `engine` (`wineskincx-23.7.1` default, **macOS only**) – Wine engine to use. **WineskinCX 23.7.1 (WS11) is the verified engine for Halo**; Gcenx Wine 11 does not work (data-cache errors). Other WS11 WineskinCX versions can be selected for testing.
 - `engine_url` (**macOS only**) – optional direct URL to a WineskinCX engine archive (same `wswine.bundle` layout); overrides the `engine` choice
 - `platform` (`all` default) – which platform(s) to build: `all` (Intel + Apple Silicon + Linux), `intel`/`silicon` (a single macOS platform) or `linux` (the Linux wrapper, x86_64). Pick a single platform when the `-vidmode` settings differ per machine (e.g. Intel without vidmode, Silicon with a preset)
-- `moltenvk` (`1.2.5` default, **macOS only**) – MoltenVK version bundled for the optional vulkan override (`none` keeps the engine's)
+- `moltenvk` (`none` default, **macOS only**) – MoltenVK is **optional and experimental**; only needed if you want to test the per-run `HALOX_D3D_RENDERER=vulkan` override. macOS uses Wine's OpenGL `gl` by default, so MoltenVK is not bundled unless you set `moltenvk` to a version (e.g. `1.2.5`) or a local dylib path.
 - `vidmode` (`none` default) – bundle a `-vidmode` value so the game starts at the current desktop resolution (wined3d skips the mode change); needed on scaled "Looks like" displays (e.g. MacBook Air) where Halo's first-run 640×480 mode change is refused. `none` = default build (Halo/Chimera handle the resolution); pick a preset alias (`macbook-air-13`, …) or `custom` + `vidmode_custom`
 - `vidmode_custom` – free-form `W,H,R` value (e.g. `1280,800,60`) used when `vidmode` is `custom`; leave empty for the default build
 
