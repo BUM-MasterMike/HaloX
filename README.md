@@ -5,7 +5,7 @@
 <h1 align="center">HaloX</h1>
 
 <p align="center">
-  <strong>Halo: Combat Evolved &amp; Custom Edition, running on modern macOS – Intel and Apple Silicon.</strong>
+  <strong>Halo: Combat Evolved &amp; Custom Edition, running on modern macOS (Intel &amp; Apple Silicon) and on Linux.</strong>
 </p>
 
 ---
@@ -13,17 +13,19 @@
 ## About
 
 **HaloX** brings Halo CE (the classic Mac-era Windows build) back to life on current
-macOS systems (Sonoma 14 and later) where the original 32-bit executables no longer run.
-It packages the game with a modern [Wine](https://www.winehq.org/) engine into a
-double-clickable `.app` — and ships with a native GUI builder app, so no terminal
-is needed for local builds. Both **Halo: Combat Evolved** and **Halo: Custom
-Edition** are supported (same engine, same installation layout).
+macOS systems (Sonoma 14 and later) where the original 32-bit executables no longer run,
+and on Linux. On macOS it packages the game with a modern [Wine](https://www.winehq.org/)
+engine into a double-clickable `.app` — and ships with a native GUI builder app, so no
+terminal is needed for local builds. On Linux it produces a runnable wrapper directory
+(CLI only). Both **Halo: Combat Evolved** and **Halo: Custom Edition** are supported
+(same engine, same installation layout).
 
 ## Features
 
 - 📦 One-command assembly of a runnable `HaloX.app` (`scripts/build-wrapper.sh`)
+- 🐧 Linux wrapper (plain directory, CLI only): `scripts/build-wrapper-linux.sh`
 - 🖥️ Runs on **Intel** (native) and **Apple Silicon** (via Rosetta 2)
-- 🧰 Native GUI builder (`HaloXBuilder.app`, universal, ready to run in the release)
+- 🧰 Native GUI builder (`HaloXBuilder.app`, universal, ready to run in the release) — **macOS only**
 - 🔁 Manual, versioned CI builds via GitHub Actions (artifacts, no release)
 
 ## HaloX Builder (GUI)
@@ -38,6 +40,10 @@ clears the download cache.
 <p align="center">
   <img src="assets/halox-builder.webp" alt="HaloX Builder GUI">
 </p>
+
+> **macOS only.** On Linux there is no GUI — the build runs from the
+> terminal (`scripts/build-local-linux.sh`, see
+> [Building the wrapper](#building-the-wrapper)).
 
 ### Ready to run
 
@@ -72,7 +78,35 @@ ARCH=x86_64 ./ui/build.sh  # only the Intel slice
 
 ## Building the wrapper
 
-### Locally (recommended)
+HaloX runs on macOS and on Linux, and the two builds are documented the
+same way — **macOS is the primary platform, Linux a bonus**:
+
+- **macOS** produces a double-clickable `HaloX.app` (Intel & Apple
+  Silicon), built from the terminal (`scripts/build-local.sh`) or with the
+  GUI builder ([HaloX Builder (GUI)](#halox-builder-gui)).
+- **Linux** produces a runnable wrapper directory (default `dist/HaloX`),
+  **CLI only** — the GUI builder is a macOS app and does not run on Linux —
+  built with `scripts/build-local-linux.sh`.
+
+Both builds take the same options (`--game`, `--chimera`, `--dsoal`, …)
+and the same game data; the platform-specific differences are listed in
+[Build options](#build-options), the game data requirements in
+[Game data requirements](#game-data-requirements).
+
+### macOS
+
+#### Requirements
+
+- macOS 11 or later, **Intel or Apple Silicon** (the x86_64 Wine engine
+  runs via Rosetta 2 on Apple Silicon)
+- `curl`, plus an archive tool — macOS ships `unzip` and `bsdtar`, which
+  cover the `.zip` game archives and the `.7z` Chimera releases
+- The first build downloads the WineskinCX engine + Wineskin wrapper
+  runtime (~1–2 GB, cached in `~/Library/Caches/HaloX`)
+- A downloaded CI artifact needs its quarantine flag cleared — see
+  [First run after download](#first-run-after-download)
+
+#### Locally (recommended)
 
 **1. Get the project** – clone it, or download `HaloX-builder-vX.Y.Z.zip` from
 the [Releases](https://github.com/BUM-MasterMike/HaloX/releases) page and unpack
@@ -118,10 +152,12 @@ engine + runtime (~1–2 GB total); later runs work fully offline.
 ./scripts/build-local.sh --engine-url https://github.com/vitor251093/porting-kit-engines/releases/download/wineskin/WS11WineCX64Bit23.7.1.tar.7z
 ```
 
+`--help` prints the full option list.
+
 What a local run looks like in the terminal (incl. the first-run engine/runtime
 download) — [example build output](#appendix-example-build-output).
 
-### Directly
+#### Directly
 
 ```bash
 ./scripts/build-wrapper.sh \
@@ -146,6 +182,124 @@ download) — [example build output](#appendix-example-build-output).
 | `--moltenvk` | MoltenVK version bundled for the optional vulkan override (default `1.2.5`; use `none` to keep the engine's) |
 | `--vidmode`  | Bundle a `-vidmode` value (`W,H,R` or a preset alias) so the game starts at the current desktop resolution and wined3d skips the mode change. Needed on scaled "Looks like" displays (e.g. MacBook Air) that refuse Halo's first-run 640×480 mode change. Default: off. Aliases live in `scripts/vidmode-presets.sh` |
 | `--out`     | Output `.app` bundle |
+
+### Linux
+
+On Linux, HaloX produces a **runnable wrapper directory**
+(default `dist/HaloX`) instead of a `.app`: the Wine engine,
+the game files and a launcher script (`HaloX`), no installation
+needed. The build is **CLI-only** — the GUI builder
+(`HaloXBuilder.app`) is a macOS app and does not run on Linux.
+
+#### Requirements
+
+A 64-bit Linux with `curl`, `tar` (with `xz`), `unzip` and an
+archive tool for `.7z` Chimera releases (`bsdtar` or `7z`). **No
+`python3` is needed** — the *latest* engine and the `github`
+Chimera/DXVK lookups are handled by the shared
+`scripts/github-latest-asset.sh` (plain `curl` + `awk`); pin a
+version or pass a local path with `--engine <version>` /
+`--chimera <path>` / `--dxvk <path>` to work fully offline. For
+the DXVK renderer you also need a 32-bit Vulkan loader plus your
+GPU's Vulkan ICD, see [Renderer (DXVK)](#renderer-dxvk).
+
+#### Locally (recommended)
+
+`scripts/build-local-linux.sh` drives `build-wrapper-linux.sh`
+with the same defaults as the macOS build, adapted for Linux: a
+Kron4ek `*-amd64-wow64` Wine engine (downloaded on first use and
+cached in `~/.cache/HaloX`), Chimera **on**, DSOAL `bundle`,
+**DXVK on**. The wow64 engine runs the 32-bit `halo.exe` on a
+64-bit prefix without 32-bit host libraries.
+
+```bash
+# Default: ./game already contains the installed Halo folder
+./scripts/build-local-linux.sh
+
+# Game files from a zip / a URL
+./scripts/build-local-linux.sh --game ./Halo.zip
+./scripts/build-local-linux.sh --game-url https://example.com/Halo.zip
+
+# Skip DXVK (renderer stays Wine OpenGL)
+./scripts/build-local-linux.sh --no-dxvk
+
+# Use a local DXVK archive or dir instead of the latest release
+./scripts/build-local-linux.sh --dxvk /path/to/dxvk.tar.gz
+```
+
+#### First run
+
+Start the game with the launcher in the wrapper directory:
+
+```bash
+./dist/HaloX/HaloX
+```
+
+On the **first** start Wine initializes its prefix and may
+ask to install **wine-mono** (Wine's .NET compatibility
+layer). Choose **Install** in the dialog: Wine downloads and
+installs wine-mono into the prefix and then **exits without
+starting Halo**. Run HaloX a second time — the game then
+starts normally.
+
+#### Renderer (DXVK)
+
+The Direct3D renderer defaults to **DXVK** (D3D8/9/10/11 →
+Vulkan, ~1.5× faster than Wine's OpenGL path and patched for
+Halo CE) whenever a **32-bit Vulkan ICD** is present, and falls
+back to Wine's OpenGL (`gl`) otherwise — so the same wrapper
+runs on systems with and without Vulkan. The two work together:
+the bundled DXVK DLLs (`d3d8`/`dxgi`, in `dxvk/`) translate
+the game's D3D8 calls into Vulkan, and the system's Vulkan
+driver talks to the GPU.
+
+> **DXVK prerequisite:** a 32-bit Vulkan loader plus your GPU's
+> Vulkan ICD (Debian/Ubuntu: `sudo apt install libvulkan1:i386`
+> plus the Mesa or NVIDIA 32-bit Vulkan driver). Without it the
+> launcher uses the OpenGL path automatically.
+
+Override per run:
+
+```bash
+HALOX_D3D_RENDERER=auto   # DXVK if Vulkan is present, else gl (default)
+HALOX_D3D_RENDERER=gl     # force Wine OpenGL
+HALOX_D3D_RENDERER=dxvk   # force DXVK (needs Vulkan)
+HALOX_D3D_RENDERER=vulkan # Wine's own Vulkan backend
+```
+
+Wine's own debug channels are passed through (HaloX defaults to
+`-all`), so a diagnosis run works too, e.g.
+`WINEDEBUG=+d3d ./dist/HaloX/HaloX`.
+
+#### Directly
+
+```bash
+./scripts/build-wrapper-linux.sh \
+  --engine /path/to/wine-<ver>-amd64-wow64 \
+  --game ./game \
+  --arch x86_64 \
+  --out dist/HaloX
+```
+
+### Build options
+
+`build-local.sh` (macOS) and `build-local-linux.sh` (Linux) take the
+**same options** — same names, same meaning: `--engine`,
+`--engine-url`, `--engine-dir`, `--game`, `--game-url`,
+`--chimera`/`--no-chimera`, `--dsoal`, `--dsoal-hrtf`, `--no-dsoal`,
+`--vidmode`, `--arch`, `--out`, `--cache-dir`, `--clear-cache`,
+`--no-cache`. `--help` prints the full list. Only the
+platform-specific options differ:
+
+| Option | macOS | Linux |
+|---|---|---|
+| `--engine` | WineskinCX, by name (`wineskincx-23.7.1`, …) | Kron4ek wow64: `latest` or a version (`11.19`) |
+| `--runtime-url` / `--runtime-dir` | Wineskin wrapper runtime | — (Linux Wine is self-contained) |
+| `--moltenvk` | MoltenVK for the optional Vulkan renderer | — (Linux uses the system's Vulkan) |
+| `--dxvk` / `--no-dxvk` | — | DXVK (on by default; `--no-dxvk` = Wine OpenGL) |
+| `--arch` | `x86_64` or `arm64` | `x86_64` only |
+| `--out` | `dist/HaloX.app` | `dist/HaloX` |
+| `--cache-dir` | `~/Library/Caches/HaloX` | `~/.cache/HaloX` |
 
 ## Supported game editions
 
@@ -297,8 +451,9 @@ The workflow `.github/workflows/build-wrapper.yml` is **manually** triggered
 
 - `HaloX-Intel-vX.Y.Z.zip` (macos-15-intel) – when `platform` is `intel` or `both`
 - `HaloX-Silicon-vX.Y.Z.zip` (macos-latest / Apple Silicon) – when `platform` is `silicon` or `both`
+- `HaloX-Linux-vX.Y.Z.tar.gz` (ubuntu-latest, x86_64) – when `platform` is `linux`
 
-No GitHub Release is created – the ZIPs appear in the run's **Artifacts**.
+No GitHub Release is created – the artifacts appear in the run's **Artifacts**.
 The version is taken from the topmost `CHANGELOG.md` section and shows up in the
 artifact names.
 
@@ -309,30 +464,36 @@ Manual workflow inputs:
 - `with_dsoal` (`true`/`false`, default `true`) – include DSOAL (3D audio) in the build?
 - `dsoal` (`bundle`/`github`/URL, default `bundle`) – DSOAL source: `bundle` = the checked-in tested build (recommended), `github` = latest daily build, or a URL to a DSOAL archive
 - `dsoal_hrtf` (`true`/`false`, default `false`) – force binaural HRTF output for headphones?
+- `with_dxvk` (`true`/`false`, default `true`) – include DXVK in the **Linux** build? (macOS ignores it; its renderer is always wined3d `gl`)
 - `engine` (`wineskincx-23.7.1` default) – Wine engine to use. **WineskinCX 23.7.1 (WS11) is the verified engine for Halo**; Gcenx Wine 11 does not work (data-cache errors). Other WS11 WineskinCX versions can be selected for testing.
 - `engine_url` – optional direct URL to a WineskinCX engine archive (same `wswine.bundle` layout); overrides the `engine` choice
-- `platform` (`both` default) – which platform(s) to build: `intel`, `silicon`, or `both`. Pick a single platform when the `-vidmode` settings differ per machine (e.g. Intel without vidmode, Silicon with a preset)
+- `platform` (`both` default) – which platform(s) to build: `intel`, `silicon`, `both` (macOS Intel + Apple Silicon), or `linux` (Linux wrapper, x86_64). Pick a single platform when the `-vidmode` settings differ per machine (e.g. Intel without vidmode, Silicon with a preset)
 - `moltenvk` (`1.2.5` default) – MoltenVK version bundled for the optional vulkan override (`none` keeps the engine's)
 - `vidmode` (`none` default) – bundle a `-vidmode` value so the game starts at the current desktop resolution (wined3d skips the mode change); needed on scaled "Looks like" displays (e.g. MacBook Air) where Halo's first-run 640×480 mode change is refused. `none` = default build (Halo/Chimera handle the resolution); pick a preset alias (`macbook-air-13`, …) or `custom` + `vidmode_custom`
 - `vidmode_custom` – free-form `W,H,R` value (e.g. `1280,800,60`) used when `vidmode` is `custom`; leave empty for the default build
 
-The CI also downloads the matching Wineskin **wrapper runtime** (the
-`Contents/Frameworks` shared libraries the engine needs at runtime), so a CI
-build reproduces the verified local setup.
+For `platform: intel|silicon|both` the CI also downloads the matching
+Wineskin **wrapper runtime** (the `Contents/Frameworks` shared libraries
+the engine needs at runtime), so a CI build reproduces the verified local
+setup. For `platform: linux` it downloads the latest Kron4ek
+`*-amd64-wow64` engine instead (the macOS-only inputs `engine`,
+`engine_url`, `moltenvk` and `vidmode` are ignored there).
 
-> **Renderer note:** HaloX always renders Direct3D through Wine's OpenGL path
-> (`gl`), exactly like the known-good reference wrapper. This works on Intel and
-> Apple Silicon and needs no Vulkan/MoltenVK. If you want to experiment with the
-> Vulkan renderer for a single run, use `HALOX_D3D_RENDERER=vulkan` before
-> launching the app.
+> **Renderer note:** on macOS HaloX always renders Direct3D through Wine's
+> OpenGL path (`gl`), exactly like the known-good reference wrapper — that
+> works on Intel and Apple Silicon and needs no Vulkan/MoltenVK; a per-run
+> `HALOX_D3D_RENDERER=vulkan` override is available. On Linux the renderer
+> defaults to **DXVK** (Vulkan) with an automatic wined3d-OpenGL fallback,
+> see [Renderer (DXVK)](#renderer-dxvk).
 
 </details>
 
 ## Development
 
-- Launcher script: `wrapper/HaloX-Launcher.sh`
-- Build script: `scripts/build-wrapper.sh`
-- Workflows: `.github/workflows/build-wrapper.yml` (app build) and `.github/workflows/build.yml` (project release, incl. the freshly built `HaloXBuilder.app`)
+- macOS: launcher `wrapper/HaloX-Launcher.sh`; build `scripts/build-wrapper.sh`
+- Linux: launcher `wrapper/HaloX-Launcher-Linux.sh`; build `scripts/build-wrapper-linux.sh`; driver `scripts/build-local-linux.sh`
+- Shared platform-independent helpers: `scripts/common-output.sh` (printing), `scripts/vidmode-presets.sh` (vidmode presets), `scripts/github-latest-asset.sh` (GitHub latest-release lookup)
+- Workflows: `.github/workflows/build-wrapper.yml` (app + Linux wrapper build) and `.github/workflows/build.yml` (project release, incl. the freshly built `HaloXBuilder.app`)
 
 ## License
 

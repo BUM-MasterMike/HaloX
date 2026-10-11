@@ -65,6 +65,11 @@ if [ -z "$VERSION" ]; then
   exit 1
 fi
 
+usage() {
+  sed -n '2,/^set -euo pipefail/p' "$0" | sed '$d'
+  exit "${1:-0}"
+}
+
 ENGINE=""
 GAME=""
 GAME_ZIP_URL=""
@@ -90,6 +95,7 @@ while [ $# -gt 0 ]; do
     --moltenvk) MOLTENVK="$2"; shift 2;;
     --wineskin-runtime) WINESKIN_RUNTIME="$2"; shift 2;;
     --vidmode) VIDMODE="$2"; shift 2;;
+    -h|--help) usage 0;;
     *) echo "Unknown argument: $1"; exit 1;;
   esac
 done
@@ -194,23 +200,7 @@ if [ -n "$CHIMERA" ]; then
   section "Chimera"
   if [ "$CHIMERA" = "github" ]; then
     CHIMERA_ZIP="$(mktemp -t chimera.XXXXXX.archive)"
-    CHIMERA_URL="$(python3 - <<'PY'
-import json, urllib.request, os
-req_headers = {"User-Agent": "HaloX", "Accept": "application/vnd.github+json"}
-token = os.environ.get("GITHUB_TOKEN")
-if token:
-    req_headers["Authorization"] = f"Bearer {token}"
-req = urllib.request.Request("https://api.github.com/repos/SnowyMouse/chimera/releases/latest",
-                             headers=req_headers)
-with urllib.request.urlopen(req) as r:
-    d = json.load(r)
-for a in d.get("assets", []):
-    name = a["name"].lower()
-    if name.endswith(".zip") or name.endswith(".7z"):
-        print(a["browser_download_url"])
-        break
-PY
-)"
+    CHIMERA_URL="$("$SCRIPT_DIR/github-latest-asset.sh" SnowyMouse/chimera '\.(zip|7z)$')"
     [ -n "$CHIMERA_URL" ] || { echo "Could not find Chimera zip release"; exit 1; }
     info "Chimera: downloading $CHIMERA_URL"
     curl -L -o "$CHIMERA_ZIP" "$CHIMERA_URL"

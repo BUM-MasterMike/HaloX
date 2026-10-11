@@ -5,7 +5,7 @@ on:
   workflow_dispatch:
     inputs:
       platform:
-        description: "Which platform(s) to build. 'both' = Intel + Apple Silicon (default). Pick a single platform when the -vidmode settings differ per machine (e.g. Intel without vidmode, Silicon with a preset)."
+        description: "Which platform(s) to build. 'both' = macOS Intel + Apple Silicon (default); 'linux' = Linux wrapper (ubuntu-latest, x86_64). Pick a single platform when the -vidmode settings differ per machine (e.g. Intel without vidmode, Silicon with a preset)."
         required: false
         default: "both"
         type: choice
@@ -13,6 +13,7 @@ on:
           - both
           - intel
           - silicon
+          - linux
       game_zip_url:
         description: "Optional URL to a zip of the installed Halo folder; used instead of ./game"
         required: false
@@ -38,6 +39,10 @@ on:
         default: "true"
       with_dsoal:
         description: "Whether to include DSOAL (3D audio) in the build"
+        required: false
+        default: "true"
+      with_dxvk:
+        description: "Whether to include DXVK in the Linux build (Linux only; ignored on macOS)"
         required: false
         default: "true"
       dsoal:
@@ -84,7 +89,9 @@ jobs:
       matrix:
         # 'matrix' is not available in jobs.<id>.if, so the platform filter
         # lives in the matrix itself: fromJSON + the 'platform' input.
-        include: ${{ fromJSON(inputs.platform == 'both' && '[{"os":"macos-15-intel","arch":"x86_64","artifact":"HaloX-Intel"},{"os":"macos-latest","arch":"arm64","artifact":"HaloX-Silicon"}]' || inputs.platform == 'intel' && '[{"os":"macos-15-intel","arch":"x86_64","artifact":"HaloX-Intel"}]' || '[{"os":"macos-latest","arch":"arm64","artifact":"HaloX-Silicon"}]') }}
+        # 'linux' builds the Linux wrapper (scripts/build-wrapper-linux.sh)
+        # on ubuntu-latest; the macOS rows build HaloX.app.
+        include: ${{ fromJSON(inputs.platform == 'linux' && '[{"os":"ubuntu-latest","arch":"x86_64","artifact":"HaloX-Linux"}]' || inputs.platform == 'both' && '[{"os":"macos-15-intel","arch":"x86_64","artifact":"HaloX-Intel"},{"os":"macos-latest","arch":"arm64","artifact":"HaloX-Silicon"}]' || inputs.platform == 'intel' && '[{"os":"macos-15-intel","arch":"x86_64","artifact":"HaloX-Intel"}]' || '[{"os":"macos-latest","arch":"arm64","artifact":"HaloX-Silicon"}]') }}
 
     steps:
       - uses: actions/checkout@v4
@@ -121,6 +128,7 @@ jobs:
           fi
 
       - name: Install WineskinCX engine + runtime
+        if: runner.os == 'macOS'
         run: |
           set -e
           if [ "$(uname -m)" = "arm64" ]; then
@@ -172,12 +180,40 @@ jobs:
           echo "ENGINE_DIR=$ENGINE_DIR" >> "$GITHUB_ENV"
           echo "RUNTIME_DIR=$RUNTIME_DIR" >> "$GITHUB_ENV"
 
-      - name: Build wrapper
+      # Linux: no Wineskin runtime; the Kron4ek wow64 engine is
+      # self-contained (bin/ lib/ share/). 'latest' resolves to the newest
+      # release via the shared github-latest-asset.sh helper (no python3).
+      - name: Install tooling + Wine engine (Linux)
+        if: runner.os == 'Linux'
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -e
+          # bsdtar handles the .7z Chimera release archives (unzip covers .zip).
+          sudo apt-get update
+          sudo apt-get install -y libarchive-tools
+          chmod +x scripts/github-latest-asset.sh
+          mkdir -p "$RUNNER_TEMP/engine"
+          ENGINE_URL="$(./scripts/github-latest-asset.sh Kron4ek/Wine-Builds '^wine-%s-amd64-wow64\.tar\.xz$')"
+          echo "Downloading engine: $ENGINE_URL"
+          curl -L --fail -o "$RUNNER_TEMP/engine/engine.tar.xz" "$ENGINE_URL"
+          tar -xJf "$RUNNER_TEMP/engine/engine.tar.xz" -C "$RUNNER_TEMP/engine"
+
+          # Locate the engine dir containing bin/ (wine / wine64).
+          ENGINE_DIR="$(dirname "$(find "$RUNNER_TEMP/engine" -maxdepth 2 -type d -name bin | head -1)")"
+          test -x "$ENGINE_DIR/bin/wine" || test -x "$ENGINE_DIR/bin/wine64" || {
+            echo "::error::Engine extraction: bin/wine not found in $ENGINE_DIR"; exit 1
+          }
+          echo "Engine: $("$ENGINE_DIR/bin/wine" --version 2>/dev/null || echo unknown)"
+          echo "ENGINE_DIR=$ENGINE_DIR" >> "$GITHUB_ENV"
+
+      - name: Build wrapper (macOS)
+        if: runner.os == 'macOS'
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           #!/bin/bash
-          chmod +x scripts/build-wrapper.sh wrapper/HaloX-Launcher.sh
+          chmod +x scripts/build-wrapper.sh scripts/github-latest-asset.sh wrapper/HaloX-Launcher.sh
           GAME_ARG="./game"
           if [ -f Halo.zip ]; then
             GAME_ARG="./Halo.zip"
@@ -209,17 +245,67 @@ jobs:
           fi
           ./scripts/build-wrapper.sh "${BUILD_ARGS[@]}"
 
+      - name: Build wrapper (Linux)
+        if: runner.os == 'Linux'
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          #!/bin/bash
+          chmod +x scripts/build-wrapper-linux.sh wrapper/HaloX-Launcher-Linux.sh
+          GAME_ARG="./game"
+          if [ -f Halo.zip ]; then
+            GAME_ARG="./Halo.zip"
+          fi
+          BUILD_ARGS=()
+          BUILD_ARGS+=(--engine "$ENGINE_DIR")
+          BUILD_ARGS+=(--game "$GAME_ARG")
+          BUILD_ARGS+=(--arch ${{ matrix.arch }})
+          BUILD_ARGS+=(--out dist/HaloX)
+          if [ "${{ inputs.vidmode }}" = "custom" ]; then
+            if [ -n "${{ inputs.vidmode_custom }}" ]; then
+              BUILD_ARGS+=(--vidmode "${{ inputs.vidmode_custom }}")
+            else
+              echo "::warning::vidmode=custom but vidmode_custom is empty; building without -vidmode"
+            fi
+          elif [ "${{ inputs.vidmode }}" != "none" ]; then
+            BUILD_ARGS+=(--vidmode "${{ inputs.vidmode }}")
+          fi
+          if [ "${{ inputs.with_chimera }}" = "true" ]; then
+            BUILD_ARGS+=(--chimera github)
+          fi
+          if [ "${{ inputs.with_dsoal }}" = "true" ]; then
+            BUILD_ARGS+=(--dsoal "${{ inputs.dsoal }}")
+            if [ "${{ inputs.dsoal_hrtf }}" = "true" ]; then
+              BUILD_ARGS+=(--dsoal-hrtf)
+            fi
+          fi
+          if [ "${{ inputs.with_dxvk }}" = "true" ]; then
+            BUILD_ARGS+=(--dxvk github)
+          fi
+          ./scripts/build-wrapper-linux.sh "${BUILD_ARGS[@]}"
+
       # upload-artifact does not preserve symlinks/permissions, which breaks
       # the ad-hoc signature of the .app (Gatekeeper: "damaged"). Package with
-      # ditto first so the bundle survives intact.
-      - name: Package app
+      # ditto first so the bundle survives intact. (Linux is packaged with
+      # tar.gz, which preserves permissions natively.)
+      - name: Package app (macOS)
+        if: runner.os == 'macOS'
         run: |
           rm -f "${{ matrix.artifact }}-v${{ env.VERSION }}.zip"
           ditto -c -k --sequesterRsrc --keepParent HaloX.app "${{ matrix.artifact }}-v${{ env.VERSION }}.zip"
+          echo "PKG_FILE=${{ matrix.artifact }}-v${{ env.VERSION }}.zip" >> "$GITHUB_ENV"
+
+      - name: Package Linux wrapper
+        if: runner.os == 'Linux'
+        run: |
+          rm -f "${{ matrix.artifact }}-v${{ env.VERSION }}.tar.gz"
+          tar -czf "${{ matrix.artifact }}-v${{ env.VERSION }}.tar.gz" -C dist HaloX
+          echo "PKG_FILE=${{ matrix.artifact }}-v${{ env.VERSION }}.tar.gz" >> "$GITHUB_ENV"
 
       - uses: actions/upload-artifact@v7
         with:
-          # archive: false -> the ZIP is served as-is, so downloading the
-          # artifact gives a single ZIP containing HaloX.app (no nested ZIP).
-          path: ${{ matrix.artifact }}-v${{ env.VERSION }}.zip
+          # archive: false -> the artifact is served as-is, so downloading
+          # the artifact gives a single file (the .zip with HaloX.app, or the
+          # .tar.gz with the Linux wrapper dir) – no nested archive.
+          path: ${{ env.PKG_FILE }}
           archive: false

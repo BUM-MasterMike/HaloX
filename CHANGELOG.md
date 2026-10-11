@@ -4,6 +4,42 @@ All notable changes to HaloX are documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [1.4.0]
+
+### Added
+- **Linux wrapper**: a runnable Linux wrapper (a plain directory,
+  e.g. `dist/HaloX`) in addition to the macOS `.app`. New
+  `scripts/build-wrapper-linux.sh` assembles it and
+  `scripts/build-local-linux.sh` drives it with the same defaults
+  (Kron4ek `*-amd64-wow64` Wine engine, Chimera on, DSOAL `bundle`,
+  DXVK on; downloads cached in `~/.cache/HaloX`). The Linux launcher
+  is a checked-in file (`wrapper/HaloX-Launcher-Linux.sh`), exactly
+  like the macOS one (`wrapper/HaloX-Launcher.sh`). x86_64 only —
+  ARM (`box64`/`FEX`) is planned.
+- **DXVK** on Linux: the Direct3D renderer now defaults to **DXVK**
+  (D3D8/9/10/11 → Vulkan, ~1.5× faster than Wine's OpenGL path and
+  patched for Halo CE) whenever a 32-bit Vulkan ICD is present, and
+  automatically falls back to Wine's OpenGL (`gl`) otherwise, so a
+  system without Vulkan still runs. Override per run with
+  `HALOX_D3D_RENDERER=gl|dxvk|vulkan|auto`; skip DXVK at build time
+  with `--no-dxvk`. macOS is unchanged (wined3d `gl`, MoltenVK
+  available via `HALOX_D3D_RENDERER=vulkan`).
+
+### Changed
+- **No `python3` needed**: the GitHub "latest release" lookups
+  (Chimera, DXVK, latest Kron4ek Wine engine) now use the shared
+  `scripts/github-latest-asset.sh` (`curl` + `awk` instead of
+  python3), so the build runs on plain systems without python.
+- **Linux CI**: `build-wrapper.yml` gained `platform: linux`
+  (ubuntu-latest, x86_64), which builds the Linux wrapper with
+  `scripts/build-wrapper-linux.sh` and uploads
+  `HaloX-Linux-vX.Y.Z.tar.gz` as a run artifact; new `with_dxvk`
+  input (default on) controls the DXVK bundling.
+- README: the macOS and Linux build documentation now lives under one
+  "Building the wrapper" chapter (`### macOS` / `### Linux`) with a
+  shared "Build options" table — macOS stays the primary platform,
+  no information was lost.
+
 ## [1.3.0]
 
 ### Added
