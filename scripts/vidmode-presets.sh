@@ -17,20 +17,20 @@
 # instead of the 60 Hz preset.
 #
 # Format per line:  name | W,H,R | description
-# "-max" = the "maximum area" scaling level. Sourced by build-wrapper.sh
+# "-max" = the "More Space" scaling level. Sourced by build-wrapper.sh
 # and build-local.sh; the CI workflow lists the same names in its "vidmode"
 # input choices (it re-runs the mapping via build-wrapper.sh).
 VIDMODE_PRESET_DEFS='
-macbook-air-13|1470,956,60|MacBook Air 13" (M2/M3/M5) - standard scaling
-macbook-air-13-max|1710,1112,60|MacBook Air 13" (M2/M3/M5) - maximum area
-macbook-air-13-old|1440,900,60|MacBook Air 13" (M1/Intel) - standard scaling
-macbook-air-13-old-max|1680,1050,60|MacBook Air 13" (M1/Intel) - maximum area
-macbook-air-15|1710,1107,60|MacBook Air 15" (M3/M5) - standard scaling
-macbook-air-15-max|1920,1243,60|MacBook Air 15" (M3/M5) - maximum area
-macbook-pro-14|1512,982,60|MacBook Pro 14" (M-chips) - standard scaling
-macbook-pro-14-max|1800,1169,60|MacBook Pro 14" (M-chips) - maximum area
-macbook-pro-16|1728,1117,60|MacBook Pro 16" (M-chips) - standard scaling
-macbook-pro-16-max|2056,1329,60|MacBook Pro 16" (M-chips) - maximum area
+macbook-air-13|1470,956,60|MacBook Air 13" (M2/M3/M4/M5) - Default
+macbook-air-13-max|1710,1112,60|MacBook Air 13" (M2/M3/M4/M5) - More Space
+macbook-air-13-old|1440,900,60|MacBook Air 13" (M1/Intel) - Default
+macbook-air-13-old-max|1680,1050,60|MacBook Air 13" (M1/Intel) - More Space
+macbook-air-15|1710,1107,60|MacBook Air 15" (M2/M3/M4/M5) - Default
+macbook-air-15-max|1920,1243,60|MacBook Air 15" (M2/M3/M4/M5) - More Space
+macbook-pro-14|1512,982,60|MacBook Pro 14" (M-chips) - Default
+macbook-pro-14-max|1800,1169,60|MacBook Pro 14" (M-chips) - More Space
+macbook-pro-16|1728,1117,60|MacBook Pro 16" (M-chips) - Default
+macbook-pro-16-max|2056,1329,60|MacBook Pro 16" (M-chips) - More Space
 '
 
 # vidmode_preset_lookup <arg> – prints the W,H,R value for a preset name and

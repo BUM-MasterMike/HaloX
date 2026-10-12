@@ -4,6 +4,18 @@ All notable changes to HaloX are documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [1.6.0]
+
+### Added
+- **HaloX Builder: vidmode preselected from the current display**: on
+  launch the builder detects the Mac's logical ("Looks like") resolution
+  and preselects the matching `-vidmode` preset, so the usual case —
+  build and play on the same machine — works without manual setup. The
+  refresh is taken from the active display mode instead of the preset's
+  hardcoded 60 (ProMotion runs up to 120 Hz), so wined3d can skip the
+  mode change. The choice can still be changed or set to "Off"; when
+  nothing matches (external display, unusual scaling) it stays "Off".
+
 ## [1.5.0]
 
 ### Changed

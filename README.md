@@ -33,8 +33,11 @@ A native macOS app (`HaloXBuilder.app`, Swift/AppKit) that drives the local
 build from a window instead of the terminal — every `scripts/build-local.sh`
 option is a field prefilled with the script's defaults (arch, output,
 engine/runtime, game source/URL, Chimera, DSOAL, MoltenVK, vidmode, cache).
-The build output streams in live and the result shows in a sheet; a button
-clears the download cache.
+The vidmode field is preselected to the preset matching the current display
+(resolution from the preset, refresh detected at runtime), so the usual case
+— build and play on the same Mac — works out of the box; it can still be
+changed or set to "Off". The build output streams in live and the result
+shows in a sheet; a button clears the download cache.
 
 <p align="center">
   <img src="assets/halox-builder.webp" alt="HaloX Builder GUI">
@@ -298,6 +301,36 @@ platform-specific options differ:
 | `--out` | `dist/HaloX.app` | `dist/HaloX` |
 | `--cache-dir` | `~/Library/Caches/HaloX` | `~/.cache/HaloX` |
 
+#### `-vidmode` presets
+
+On Retina MacBooks macOS runs the panel at a scaled "Looks like" resolution
+instead of a whole multiple of the native pixels. Halo requests a 640×480 mode
+on first run; on a scaled display wined3d cannot complete that mode change,
+which surfaces as the *"A problem occurred initializing Direct3D … please run
+DXDIAG"* dialog. Bundling `-vidmode` with the resolution that is already active
+makes Halo ask for that same mode, so wined3d skips the change (see also
+[Troubleshooting](#troubleshooting)).
+
+| Preset | `W,H,R` | Display |
+|---|---|---|
+| `macbook-air-13` | `1470,956,60` | MacBook Air 13″ (M2/M3/M4/M5), Default |
+| `macbook-air-13-max` | `1710,1112,60` | MacBook Air 13″ (M2/M3/M4/M5), "More Space" |
+| `macbook-air-13-old` | `1440,900,60` | MacBook Air 13″ (M1/Intel) and MacBook Pro 13″ (M1/M2), Default |
+| `macbook-air-13-old-max` | `1680,1050,60` | MacBook Air 13″ (M1/Intel) and MacBook Pro 13″ (M1/M2), "More Space" |
+| `macbook-air-15` | `1710,1107,60` | MacBook Air 15″ (M2/M3/M4/M5), Default |
+| `macbook-air-15-max` | `1920,1243,60` | MacBook Air 15″ (M2/M3/M4/M5), "More Space" |
+| `macbook-pro-14` | `1512,982,60` | MacBook Pro 14″ (M1–M5), Default |
+| `macbook-pro-14-max` | `1800,1169,60` | MacBook Pro 14″ (M1–M5), "More Space" |
+| `macbook-pro-16` | `1728,1117,60` | MacBook Pro 16″ (M1–M5), Default |
+| `macbook-pro-16-max` | `2056,1329,60` | MacBook Pro 16″ (M1–M5), "More Space" |
+
+The values are each model's Default and "More Space" ("Looks like") scaling
+levels. If your display is on an intermediate scaling, pass the value directly
+as `--vidmode W,H,R`. The presets fix the refresh at 60 Hz; on a ProMotion Pro
+actually running at 120 Hz pass the value directly — or use the
+[GUI builder](#halox-builder-gui), which detects the current display's
+resolution *and* refresh and preselects the matching preset.
+
 ## Supported game editions
 
 HaloX works with the installed Windows Halo folder of both **Halo: Combat
@@ -380,6 +413,21 @@ codesign --force --deep --sign - /Applications/HaloX.app
 above) or use `sudo xattr -cr /Applications/HaloX.app`.
 
 ## Troubleshooting
+
+**"A problem occurred initializing Direct3D … please run DXDIAG" on first start**
+
+Halo requests a 640×480 mode on first run. On a MacBook running at a scaled
+"Looks like" resolution (most Airs, and the Pros on "More Space"), wined3d
+cannot complete that mode change, so Halo shows the Direct3D/DXDIAG dialog.
+Build with `--vidmode` set to your model's preset — see
+[`-vidmode` presets](#-vidmode-presets) — so Halo starts at the already-active
+desktop resolution and wined3d skips the change. The
+[GUI builder](#halox-builder-gui) preselects the matching preset for you. To
+test without rebuilding, pass the flag straight to the launcher:
+
+```bash
+"/Applications/HaloX.app/Contents/MacOS/HaloX" -vidmode 1470,956,60
+```
 
 **Game crashes on startup with `Placement heap type is not supported`**
 
@@ -502,7 +550,7 @@ downloads the latest Kron4ek `*-amd64-wow64` engine instead. Only
 
 ## License
 
-Copyright (c) 2026 BUM MasterMike – released under the [MIT License](LICENSE).
+Copyright &copy; 2026 BUM MasterMike – released under the [MIT License](LICENSE).
 
 ## Appendix: Example build output
 

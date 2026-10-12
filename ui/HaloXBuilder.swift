@@ -14,6 +14,7 @@
 //
 
 import AppKit
+import CoreGraphics
 
 // Host architecture, used as the default for the --arch popup.
 #if arch(arm64)
@@ -39,18 +40,23 @@ let logFont = NSFont.monospacedSystemFont(ofSize: 11, weight: .regular)
 
 // Fixed -vidmode presets for the popup, mirroring the table in
 // scripts/vidmode-presets.sh (the single source of truth for the
-// scripts and the CI workflow; duplicated here for the GUI).
-let vidmodePresets: [(name: String, value: String)] = [
-    ("macbook-air-13", "1470,956,60"),
-    ("macbook-air-13-max", "1710,1112,60"),
-    ("macbook-air-13-old", "1440,900,60"),
-    ("macbook-air-13-old-max", "1680,1050,60"),
-    ("macbook-air-15", "1710,1107,60"),
-    ("macbook-air-15-max", "1920,1243,60"),
-    ("macbook-pro-14", "1512,982,60"),
-    ("macbook-pro-14-max", "1800,1169,60"),
-    ("macbook-pro-16", "1728,1117,60"),
-    ("macbook-pro-16-max", "2056,1329,60"),
+// scripts and the CI workflow; duplicated here for the GUI). label is
+// the readable shell description (shown as the popup title), name the
+// alias and value the W,H,R; each item's tooltip shows "name\nvalue".
+// On launch the preset matching this Mac's display is preselected (see
+// preselectDetectedVidmode); the refresh is then taken from the active
+// display mode instead of the hardcoded 60 (ProMotion runs up to 120).
+let vidmodePresets: [(name: String, value: String, label: String)] = [
+    ("macbook-air-13", "1470,956,60", "MacBook Air 13\" (M2/M3/M4/M5) - Default"),
+    ("macbook-air-13-max", "1710,1112,60", "MacBook Air 13\" (M2/M3/M4/M5) - More Space"),
+    ("macbook-air-13-old", "1440,900,60", "MacBook Air 13\" (M1/Intel) - Default"),
+    ("macbook-air-13-old-max", "1680,1050,60", "MacBook Air 13\" (M1/Intel) - More Space"),
+    ("macbook-air-15", "1710,1107,60", "MacBook Air 15\" (M2/M3/M4/M5) - Default"),
+    ("macbook-air-15-max", "1920,1243,60", "MacBook Air 15\" (M2/M3/M4/M5) - More Space"),
+    ("macbook-pro-14", "1512,982,60", "MacBook Pro 14\" (M-chips) - Default"),
+    ("macbook-pro-14-max", "1800,1169,60", "MacBook Pro 14\" (M-chips) - More Space"),
+    ("macbook-pro-16", "1728,1117,60", "MacBook Pro 16\" (M-chips) - Default"),
+    ("macbook-pro-16-max", "2056,1329,60", "MacBook Pro 16\" (M-chips) - More Space"),
 ]
 
 private extension String {
@@ -468,6 +474,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
         buildForm(in: form)
 
+        // Preselect the -vidmode preset for this Mac's display, so the
+        // usual case (build and play on the same machine) works without
+        // manual setup. The user can still change it or pick "Off".
+        preselectDetectedVidmode()
+
         // Trailing spring: absorbs any surplus height in the form stack,
         // so surplus never stretches the last row (which would push the
         // "No cache" row away from its section when the window grows).
@@ -678,6 +689,26 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         archPopup.selectItem(at: defaultArch == "arm64" ? 0 : 1)
         addRow("Architecture", archPopup, to: form)
 
+        // Fixed presets from scripts/vidmode-presets.sh, plus a custom
+        // option, mirroring the script's interactive picker. Items
+        // carry a tag (0 = off, 1 = preset, 2 = custom value,
+        // 3 = custom prompt) and the value in representedObject.
+        vidmodePopup = NSPopUpButton()
+        vidmodePopup.addItem(withTitle: "Off (no -vidmode)")
+        vidmodePopup.lastItem?.tag = 0
+        for preset in vidmodePresets {
+            vidmodePopup.addItem(withTitle: preset.label)
+            vidmodePopup.lastItem?.tag = 1
+            vidmodePopup.lastItem?.representedObject = preset.value
+            vidmodePopup.lastItem?.toolTip = "\(preset.name)\n\(preset.value)"
+        }
+        vidmodePopup.addItem(withTitle: "Custom W,H,R…")
+        vidmodePopup.lastItem?.tag = 3
+        vidmodePopup.toolTip = "Pick a display preset, or define your own W,H,R (e.g. 1280,800,60)"
+        vidmodePopup.target = self
+        vidmodePopup.action = #selector(vidmodeSelectionChanged)
+        addRow("Vidmode", vidmodePopup, to: form)
+
         outField = NSTextField()
         outField.stringValue = "/Applications/HaloX.app"
         outField.placeholderString = "/Applications/HaloX.app"
@@ -765,26 +796,6 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         moltenvkField.placeholderString = "version, path or 'none'"
         moltenvkField.toolTip = "Optional and experimental. MoltenVK is only needed for the HALOX_D3D_RENDERER=vulkan test override; the normal macOS build uses Wine's OpenGL ('gl') and needs no MoltenVK. Leave 'none' unless you want to bundle it."
         addRow("MoltenVK", moltenvkField, to: form)
-
-        // Fixed presets from scripts/vidmode-presets.sh, plus a custom
-        // option, mirroring the script's interactive picker. Items
-        // carry a tag (0 = off, 1 = preset, 2 = custom value,
-        // 3 = custom prompt) and the value in representedObject.
-        vidmodePopup = NSPopUpButton()
-        vidmodePopup.addItem(withTitle: "Off (no -vidmode)")
-        vidmodePopup.lastItem?.tag = 0
-        for preset in vidmodePresets {
-            vidmodePopup.addItem(withTitle: preset.name)
-            vidmodePopup.lastItem?.tag = 1
-            vidmodePopup.lastItem?.representedObject = preset.value
-            vidmodePopup.lastItem?.toolTip = preset.value
-        }
-        vidmodePopup.addItem(withTitle: "Custom W,H,R…")
-        vidmodePopup.lastItem?.tag = 3
-        vidmodePopup.toolTip = "Pick a display preset, or define your own W,H,R (e.g. 1280,800,60)"
-        vidmodePopup.target = self
-        vidmodePopup.action = #selector(vidmodeSelectionChanged)
-        addRow("Vidmode", vidmodePopup, to: form)
 
         section("Cache", in: form)
 
@@ -1103,6 +1114,51 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private func resetVidmodeToOff() {
         vidmodePopup.selectItem(at: 0)
         vidmodeValue = nil
+    }
+
+    /// Preselect the -vidmode preset that matches this Mac's current
+    /// display, so the usual case (build and play on the same machine)
+    /// works without manual setup. The resolution comes from the preset
+    /// table; the refresh is taken from the active display mode
+    /// (ProMotion up to 120 Hz vs. the Airs' fixed 60 Hz) instead of the
+    /// preset's hardcoded 60. The user can always change the choice or
+    /// pick "Off"; when nothing matches (external display, unusual
+    /// scaling) the popup stays on "Off".
+    private func preselectDetectedVidmode() {
+        guard let (w, h, r) = detectedDisplayMode() else { return }
+        for item in vidmodePopup.itemArray where item.tag == 1 {
+            guard let value = item.representedObject as? String else { continue }
+            let parts = value.split(separator: ",")
+            guard parts.count == 3, Int(parts[0]) == w, Int(parts[1]) == h else { continue }
+            let detected = "\(w),\(h),\(r)"
+            let name = vidmodePresets.first(where: { $0.value == value })?.name ?? item.title
+            item.representedObject = detected
+            item.toolTip = "\(name)\n\(detected) (detected)"
+            vidmodePopup.select(item)
+            vidmodeValue = detected
+            return
+        }
+    }
+
+    /// This Mac's logical ("Looks like") resolution and the active
+    /// refresh rate of the display, both rounded to whole numbers. Uses
+    /// the screen showing the builder window, else the primary screen.
+    private func detectedDisplayMode() -> (w: Int, h: Int, r: Int)? {
+        guard let screen = NSScreen.main ?? NSScreen.screens.first else { return nil }
+        let w = Int(screen.frame.size.width.rounded())
+        let h = Int(screen.frame.size.height.rounded())
+        var refresh = 60
+        if #available(macOS 12.0, *) {
+            refresh = screen.maximumFramesPerSecond
+        }
+        let key = NSDeviceDescriptionKey(rawValue: "NSScreenNumber")
+        if let number = screen.deviceDescription[key] as? NSNumber,
+           let mode = CGDisplayCopyDisplayMode(CGDirectDisplayID(number.uint32Value)) {
+            let rate = mode.refreshRate
+            if rate > 0 { refresh = Int(rate.rounded()) }
+        }
+        if refresh <= 0 { refresh = 60 }
+        return (w, h, refresh)
     }
 
     private func warnInvalidVidmode(_ raw: String) {
